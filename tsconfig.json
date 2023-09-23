@@ -9,6 +9,6 @@
     "outDir": "dist"
     // "types": ["bun-types"]
   },
-  "include": ["*.ts"],
+  "include": ["*.ts", "performance.ts"],
   "exclude": ["*.test.ts", "server*"]
 }

@@ -1,38 +1,50 @@
+// TODO Repeatable AND subMarks to markAsync
+
 import * as mqtt from "mqtt";
 import { WebSocket } from "ws";
+
+const VERSION = "0.0.1";
+
 let ws: WebSocket;
 let client: mqtt.MqttClient;
+let config: PerfyllConfig = {
+  url: "http://localhost:4000/test",
+  secret: "",
+  token: "",
+  mode: "http",
+};
 
 export type PerfyllConfig = {
   url?: string;
   token?: string;
+  secret?: string;
   mode: "ws" | "http" | "mqtt";
 };
 
-type ExtraArgs = { author?: string; [key: string]: string | undefined };
+export type MarkExtraArgs = { author?: string; [key: string]: string | undefined };
 
-export type MarkArgs = {
+export type StartMarkArgs = EndMarkArgs & {
+  headers?: Headers;
+  repeatable?: boolean;
+};
+
+export type EndMarkArgs = {
   mark: string;
-  mainMark?: string;
-  extra?: ExtraArgs;
+  extra?: MarkExtraArgs;
 };
 
 export type MarkPostBody = {
   mainMark: string;
   mainMarkHash: string;
+  fromClient?: boolean;
   async?: boolean;
-  timeline: [string, number, number, ExtraArgs][];
+  marks: [string, number, number, MarkExtraArgs][];
 };
 
-let currentAuthor: string | undefined | null;
-let config: PerfyllConfig = {
-  url: "http://localhost:4000/test",
-  token: "",
-  mode: "http",
-};
-
-const mapMarks: Map<string, [number, string, string, ExtraArgs]> = new Map(); // [start, hash, main]
-const mapSubMarks: Map<string, Array<[number, number, ExtraArgs]>> = new Map(); // [start, end]
+// [start, end, hash, main, extra]
+const mapMarks: Map<string, [number, number, string, string, MarkExtraArgs]> = new Map();
+// [[start, end, extra]]
+// const repeatableMarks: Map<string, [number, number, MarkExtraArgs][]> = new Map();
 
 const HEADER_MARK = "perfyll_mark";
 const HEADER_HASH = "perfyll_hash";
@@ -42,144 +54,115 @@ const HEADER_HASH = "perfyll_hash";
  * @param {Header} [headers] - Optional headers; they are mandatory in the FIRST Mark in the E2E marks.
  * @returns
  */
-export function startMark(data: MarkArgs | string, headers?: Headers) {
-  const { mark, extra } = getArgsFromData(data);
+export function startMark(data: StartMarkArgs | string) {
+  const { mark, extra, headers } = getArgsFromData(data);
 
-  const hash = headers?.get(HEADER_HASH) || generateUUID();
+  const hash = headers?.get(HEADER_HASH) || "";
   const main = headers?.get(HEADER_MARK) || mark;
-  mapMarks.set(mark, [Date.now(), hash, main, extra]);
+  mapMarks.set(mark, [Date.now(), 0, hash, main, extra]);
 
   return;
 }
 
-export function endMark(data: MarkArgs | string, subMarks?: string[]) {
+export function endMark(data: EndMarkArgs | string, subMarks?: string[]) {
   const { mark, extra } = getArgsFromData(data);
 
   if (!mapMarks.has(mark)) return;
 
   const start = mapMarks.get(mark)![0];
-  const mainMarkHash = mapMarks.get(mark)![1];
-  const mainMark = mapMarks.get(mark)![2];
-  const currentExtra = mapMarks.get(mark)![3];
+  const mainMarkHash = mapMarks.get(mark)![2] || generateUUID();
+  const mainMark = mapMarks.get(mark)![3];
+  const currentExtra = mapMarks.get(mark)![4];
 
-  let marks: [string, number, number, ExtraArgs][] = [
+  if (!subMarks) {
+    mapMarks.get(mark)![1] = Date.now();
+    return;
+  }
+
+  let marks: [string, number, number, MarkExtraArgs][] = [
     [mark, start, Date.now(), Object.assign(currentExtra, extra)],
   ];
-  let marksSerialized = `${mark}:${start}:${Date.now()}`;
-  if (subMarks) {
-    for (let i = 0; i < subMarks.length; i++) {
-      const subMark = mapSubMarks.get(subMarks[i]);
-      if (!subMark) continue;
-      for (let j = 0; j < subMark.length; j++) {
-        const occurrence = subMark[j];
-        if (occurrence[1] !== 0) {
-          marks.push([subMarks[i], occurrence[0], occurrence[1], occurrence[2]]);
-          marksSerialized.concat(`|${subMarks[i]}:${occurrence[0]}:${occurrence[1]}`);
-        }
-        mapSubMarks.delete(subMarks[i]);
-      }
-    }
+
+  for (let i = 0; i < subMarks.length; i++) {
+    const subMarkName = subMarks[i];
+    const subMark = mapMarks.get(subMarkName)!;
+    if (!subMark) continue;
+    marks.push([subMarkName, subMark[0], subMark[1], subMark[4]]);
+    mapMarks.delete(subMarkName);
   }
 
   mapMarks.delete(mark);
 
-  marksSerialized = `${mainMark}+${mainMarkHash}+${marksSerialized}`;
-  // JSON.stringify({
-  //   mainMark,
-  //   mainMarkHash,
-  //   timeline: marks,
-  // });
-
-  if (config.mode === "mqtt") {
-    client.publish("test", marksSerialized);
-  }
-
-  if (config.mode === "ws") {
-    ws.send(
-      marksSerialized
-      // JSON.stringify({
-      //   mainMark,
-      //   mainMarkHash,
-      //   timeline: marks,
-      // })
-    );
-  }
-
-  if (config.mode === "http") {
-    fetchAPI({
-      mainMark,
-      mainMarkHash,
-      timeline: marks,
-    });
-  }
-}
-
-/**
- * Submarks will wait for the main mark to end to be sent to the server in batch
- *
- * @param data
- */
-export function startSubMark(data: MarkArgs | string) {
-  const { mark, extra } = getArgsFromData(data);
-
-  if (mapSubMarks.has(mark)) {
-    mapSubMarks.get(mark)!.push([Date.now(), 0, extra]);
-  } else {
-    mapSubMarks.set(mark, [[Date.now(), 0, extra]]);
-  }
-}
-
-/**
- * Submarks will wait for the main mark to end to be sent to the server in batch
- *
- * @param data
- */
-export function endSubMark(data: MarkArgs | string) {
-  const { mark, extra } = getArgsFromData(data);
-
-  if (mapSubMarks.has(mark)) {
-    const last = mapSubMarks.get(mark)!.at(-1);
-    if (!last) return;
-    last[1] = Date.now();
-    last[2] = Object.assign(last[2], extra);
-  }
-}
-
-export function startMarkAsync(data: MarkArgs | string, headers?: Headers) {
-  const args = getArgsFromData(data);
-  const mainMark = headers?.get(HEADER_MARK) || args.mainMark || args.mark;
-  const mainMarkHash = headers?.get(HEADER_HASH) || mapMarks.get(mainMark)?.[1] || generateUUID();
-
-  const mark: MarkPostBody = {
+  return publishEvent({
     mainMark,
     mainMarkHash,
+    marks,
+  });
+}
+
+export function markOnly(data: StartMarkArgs | string, send = false) {
+  const args = getArgsFromData(data);
+  const newMainMark = args.headers?.get(HEADER_MARK) || args.mark;
+  const currentMainMark = mapMarks.get(newMainMark);
+  if (currentMainMark && !currentMainMark[2]) {
+    currentMainMark[2] = generateUUID();
+  }
+  const mainMarkHash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+  const now = Date.now();
+
+  if (send) {
+    return publishEvent({
+      mainMark: newMainMark,
+      mainMarkHash,
+      marks: [[args.mark, now, now, args.extra]],
+    });
+  } else {
+    mapMarks.set(args.mark, [now, now, newMainMark, mainMarkHash, args.extra]);
+  }
+}
+
+export function startMarkAsync(data: StartMarkArgs | string, mainMark?: string) {
+  const args = getArgsFromData(data);
+  const newMainMark = args.headers?.get(HEADER_MARK) || mainMark || args.mark;
+  const currentMainMark = mapMarks.get(newMainMark);
+  if (currentMainMark && !currentMainMark[2]) {
+    currentMainMark[2] = generateUUID();
+  }
+  const mainMarkHash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+
+  const mark: MarkPostBody = {
+    mainMark: newMainMark,
+    mainMarkHash,
     async: true,
-    timeline: [[args.mark, Date.now(), 0, args.extra]],
+    marks: [[args.mark, Date.now(), 0, args.extra]],
   };
 
   return mark;
 }
 
-export function endMarkAsync(ref: MarkPostBody, subMarks?: string[]) {
-  if (subMarks) {
-    for (let i = 0; i < subMarks.length; i++) {
-      const subMarksEvents: [string, number, number, ExtraArgs][] | undefined = mapSubMarks
-        .get(subMarks[i])
-        ?.map((occurrence) => [subMarks[i], occurrence[0], occurrence[1], occurrence[2]]);
-      subMarksEvents && ref.timeline.concat(subMarksEvents);
-      mapSubMarks.delete(subMarks[i]);
-    }
+export function endMarkAsync(ref: MarkPostBody) {
+  ref.marks[0][2] = Date.now();
+  return publishEvent(ref);
+}
+
+export function getHeaders(mark: string) {
+  if (mapMarks.get(mark)) {
+    const uuid = mapMarks.get(mark)![2] || generateUUID();
+    mapMarks.get(mark)![2] = uuid;
+    return {
+      [HEADER_HASH]: uuid,
+      [HEADER_MARK]: mark,
+    };
   }
-  ref.timeline[0][2] = Date.now();
-  return fetchAPI(ref);
+  console.error(`The mark ${mark} must be started before this call`);
 }
 
 export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
   if (conf.mode === "ws") {
-    ws = new WebSocket("ws://localhost:3000", {});
+    ws = new WebSocket("ws://localhost:4000", {});
   } else if (conf.mode === "mqtt") {
-    mqtt.connect({
+    client = mqtt.connect({
       host: "localhost",
       protocol: "mqtt",
       port: 1883,
@@ -195,29 +178,53 @@ function generateUUID() {
   });
 }
 
-function getArgsFromData(data: MarkArgs | string, headers?: Headers) {
+function getArgsFromData(data: StartMarkArgs | string) {
   let mark: string;
-  let mainMark: string | undefined;
-  let extra: ExtraArgs = {};
+  let extra: MarkExtraArgs = {};
+  let headers: Headers | undefined;
 
   if (typeof data === "string") {
-    mark = data;
+    return { mark: data, extra: {} };
   } else {
     mark = data.mark;
     extra = data.extra || {};
-    mainMark = data.mainMark;
+    headers = data.headers;
   }
 
-  return { mark, mainMark, extra };
+  return { mark, extra, headers };
 }
 
 function fetchAPI(event: MarkPostBody) {
   return fetch(config.url!, {
     method: "POST",
-    body: event as any,
+    body: JSON.stringify(event),
     headers: {
       "Content-Type": "application/json",
       Authorization: config.token!,
     },
-  }).catch(() => undefined);
+  });
+}
+
+function serializeData(data: MarkPostBody) {
+  let serialized = `(${VERSION})${data.mainMark};${data.mainMarkHash}}`;
+  serialized += data.async ? ";async|" : "|";
+  for (let i = 0; i < data.marks.length; i++) {
+    const element = data.marks[i];
+    serialized += `${element[0]};${element[1]};${element[2]}`;
+    const extra = JSON.stringify(element[3]);
+    if (extra !== "{}") {
+      serialized += `;${extra}`;
+    }
+  }
+  return serialized;
+}
+
+function publishEvent(data: MarkPostBody) {
+  if (config.mode === "mqtt") {
+    client.publish("test", serializeData(data));
+  } else if (config.mode === "ws") {
+    ws.send(serializeData(data));
+  } else {
+    fetchAPI(data);
+  }
 }

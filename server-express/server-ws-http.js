@@ -1,14 +1,18 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const bodyParser = require("body-parser");
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+app.use(bodyParser.json());
+
 // Express route
 app.post("/test", (req, res) => {
-  res.send("Hello Express!");
+  console.log(req.body);
+  res.send("ok");
 });
 
 // WebSocket connection handling

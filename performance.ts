@@ -4,10 +4,10 @@ import { wait } from "./utils";
 import { Worker, isMainThread, parentPort } from "worker_threads";
 
 const config = {
-  mode: "http",
+  mode: "ws",
 } as const;
 init(config);
-const ITERATIONS = 1_000;
+const ITERATIONS = 1000;
 const DELAY = 0;
 
 if (isMainThread) {
@@ -45,7 +45,7 @@ if (isMainThread) {
       const result = await getStatistics(async () => {
         startMark("database");
         await wait(DELAY);
-        endMark("database");
+        endMark("database", []);
       }, ITERATIONS);
       console.timeEnd("withMark time");
       parentPort?.postMessage(JSON.stringify(result));
