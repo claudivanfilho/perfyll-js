@@ -6,7 +6,6 @@ function calculatePercentageDifference(value1: number, value2: number): string {
     return "Equal";
   }
 
-  const diff = Math.abs(value1 - value2);
   const max = Math.max(value1, value2);
   const min = Math.min(value1, value2);
   const percentage = ((max - min) / min) * 100;

@@ -7,11 +7,14 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+let count = 0;
+
 app.use(bodyParser.json());
 
 // Express route
 app.post("/test", (req, res) => {
-  console.log(req.body);
+  count += 1;
+  console.log(req.body, count);
   res.send("ok");
 });
 
@@ -20,7 +23,8 @@ wss.on("connection", (ws) => {
   console.log("WebSocket client connected");
 
   ws.on("message", (message) => {
-    console.log(`Received: ${message}`);
+    console.log(`Received: ${message} ${count}`);
+    count += 1;
   });
 
   ws.on("close", () => {

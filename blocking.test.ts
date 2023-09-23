@@ -1,8 +1,12 @@
-import { startMark, endMark, markOnly, MarkPostBody } from ".";
+import { startMark, endMark, markOnly, init } from ".";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+init({
+  url: "http://localhost",
+});
 
 describe("Tests for bloking transactions", () => {
   beforeEach(() => {
@@ -20,12 +24,13 @@ describe("Tests for bloking transactions", () => {
 
     await registerUser();
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.anything(),
+    const { body: bodyString }: { body: string } = fetchSpy.mock.calls.at(0)?.at(1) as any;
+    const body = JSON.parse(bodyString);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(body).toStrictEqual(
       expect.objectContaining({
-        body: expect.objectContaining({
-          marks: [["registerUser", expect.anything(), expect.anything(), expect.anything()]],
-        }),
+        marks: [["registerUser", expect.anything(), expect.anything(), expect.anything()]],
       })
     );
   });
@@ -41,21 +46,22 @@ describe("Tests for bloking transactions", () => {
 
     const registerUser = async () => {
       startMark("registerUser");
+      await wait(20);
       await databaseQuery();
+      await wait(100);
       endMark("registerUser", ["database"]);
     };
 
     await registerUser();
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.anything(),
+    const { body }: { body: string } = fetchSpy.mock.calls.at(0)?.at(1) as any;
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(body)).toStrictEqual(
       expect.objectContaining({
-        body: expect.objectContaining({
-          marks: [
-            ["registerUser", expect.anything(), expect.anything(), expect.anything()],
-            ["database", expect.anything(), expect.anything(), expect.anything()],
-          ],
-        }),
+        marks: [
+          ["registerUser", expect.anything(), expect.anything(), expect.anything()],
+          ["database", expect.anything(), expect.anything(), expect.anything()],
+        ],
       })
     );
   });
@@ -67,23 +73,23 @@ describe("Tests for bloking transactions", () => {
       startMark("registerUser");
       await wait(100);
       markOnly("hitThisStage");
+      await wait(20);
       endMark("registerUser", ["hitThisStage"]);
     };
 
     await registerUser();
 
-    const { body }: { body: MarkPostBody } = fetchSpy.mock.calls.at(0)?.at(1) as any;
+    const { body: bodyString }: { body: string } = fetchSpy.mock.calls.at(0)?.at(1) as any;
+    const body = JSON.parse(bodyString);
 
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(body.marks[1][1]).toBe(body.marks[1][2]);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(body).toStrictEqual(
       expect.objectContaining({
-        body: expect.objectContaining({
-          marks: [
-            ["registerUser", expect.anything(), expect.anything(), expect.anything()],
-            ["hitThisStage", expect.anything(), expect.anything(), expect.anything()],
-          ],
-        }),
+        marks: [
+          ["registerUser", expect.anything(), expect.anything(), expect.anything()],
+          ["hitThisStage", expect.anything(), expect.anything(), expect.anything()],
+        ],
       })
     );
   });

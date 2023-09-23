@@ -1,5 +1,9 @@
-import { MarkPostBody, endMark, endMarkAsync, startMark, startMarkAsync } from ".";
+import { endMark, endMarkAsync, init, startMark, startMarkAsync } from ".";
 import { wait } from "./utils";
+
+init({
+  url: "http://localhost",
+});
 
 describe("Tests for non bloking transactions", () => {
   beforeEach(() => {
@@ -29,22 +33,26 @@ describe("Tests for non bloking transactions", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
 
-    const options: { body: MarkPostBody } = fetchSpy.mock.calls.at(0)?.at(1) as any;
-    expect(options.body).not.toEqual(expect.objectContaining({ async: true }));
-    expect(options.body.marks.length).toBe(1);
-    expect(options.body.marks[0][0]).toBe("my-sync-action");
+    const { body: bodyString }: { body: string } = fetchSpy.mock.calls.at(0)?.at(1) as any;
+    const body = JSON.parse(bodyString);
 
-    const options2: { body: MarkPostBody } = fetchSpy.mock.calls.at(1)?.at(1) as any;
-    expect(options2.body).toEqual(
+    expect(body).not.toEqual(expect.objectContaining({ async: true }));
+    expect(body.marks.length).toBe(1);
+    expect(body.marks[0][0]).toBe("my-sync-action");
+
+    const { body: bodyString2 }: { body: string } = fetchSpy.mock.calls.at(1)?.at(1) as any;
+    const body2 = JSON.parse(bodyString2);
+
+    expect(body2).toEqual(
       expect.objectContaining({
         mainMark: "my-sync-action",
         async: true,
       })
     );
-    expect(options2.body.marks.length).toBe(1);
-    expect(options2.body.marks[0][0]).toBe("sendEmail");
+    expect(body2.marks.length).toBe(1);
+    expect(body2.marks[0][0]).toBe("sendEmail");
 
-    expect(options2.body.mainMarkHash).toBe(options.body.mainMarkHash);
-    expect(options.body.marks[0][2] < options2.body.marks[0][2]).toBeTruthy();
+    expect(body2.mainMarkHash).toBe(body.mainMarkHash);
+    expect(body.marks[0][2] < body2.marks[0][2]).toBeTruthy();
   });
 });

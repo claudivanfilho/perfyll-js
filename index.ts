@@ -1,24 +1,27 @@
 // TODO Repeatable AND subMarks to markAsync
-
-import * as mqtt from "mqtt";
 import { WebSocket } from "ws";
+import kleur from "kleur";
 
+// send in the headers
 const VERSION = "0.0.1";
 
 let ws: WebSocket;
-let client: mqtt.MqttClient;
 let config: PerfyllConfig = {
-  url: "http://localhost:4000/test",
+  url: "",
   secret: "",
   token: "",
-  mode: "http",
+  log: true,
+  offline: false,
 };
 
 export type PerfyllConfig = {
   url?: string;
   token?: string;
   secret?: string;
-  mode: "ws" | "http" | "mqtt";
+  /** default is true */
+  log?: boolean;
+  /** default is false */
+  offline?: boolean;
 };
 
 export type MarkExtraArgs = { author?: string; [key: string]: string | undefined };
@@ -67,15 +70,16 @@ export function startMark(data: StartMarkArgs | string) {
 export function endMark(data: EndMarkArgs | string, subMarks?: string[]) {
   const { mark, extra } = getArgsFromData(data);
 
-  if (!mapMarks.has(mark)) return;
+  const markRef = mapMarks.get(mark)!;
+  if (!markRef) return;
 
-  const start = mapMarks.get(mark)![0];
-  const mainMarkHash = mapMarks.get(mark)![2] || generateUUID();
-  const mainMark = mapMarks.get(mark)![3];
-  const currentExtra = mapMarks.get(mark)![4];
+  const start = markRef[0];
+  const mainMarkHash = markRef[2] || generateUUID();
+  const mainMark = markRef[3];
+  const currentExtra = markRef[4];
 
   if (!subMarks) {
-    mapMarks.get(mark)![1] = Date.now();
+    markRef[1] = Date.now();
     return;
   }
 
@@ -159,14 +163,8 @@ export function getHeaders(mark: string) {
 
 export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
-  if (conf.mode === "ws") {
-    ws = new WebSocket("ws://localhost:4000", {});
-  } else if (conf.mode === "mqtt") {
-    client = mqtt.connect({
-      host: "localhost",
-      protocol: "mqtt",
-      port: 1883,
-    });
+  if (conf.url?.startsWith("ws://")) {
+    ws = new WebSocket(conf.url, { headers: { "perfyll-version": VERSION } });
   }
 }
 
@@ -200,31 +198,47 @@ function fetchAPI(event: MarkPostBody) {
     body: JSON.stringify(event),
     headers: {
       "Content-Type": "application/json",
+      "perfyll-version": VERSION,
       Authorization: config.token!,
     },
   });
 }
 
 function serializeData(data: MarkPostBody) {
-  let serialized = `(${VERSION})${data.mainMark};${data.mainMarkHash}}`;
-  serialized += data.async ? ";async|" : "|";
-  for (let i = 0; i < data.marks.length; i++) {
-    const element = data.marks[i];
-    serialized += `${element[0]};${element[1]};${element[2]}`;
-    const extra = JSON.stringify(element[3]);
-    if (extra !== "{}") {
-      serialized += `;${extra}`;
-    }
-  }
-  return serialized;
+  return JSON.stringify(data);
+}
+
+function log(data: MarkPostBody) {
+  let full = data.marks[0][2] - data.marks[0][1];
+  let result = "";
+  data.marks.forEach((mark) => {
+    const duration = mark[2] - mark[1];
+    const start = mark[1] - data.marks[0][1];
+    const size = Math.ceil((duration / full) * 30);
+    const blankSize = Math.ceil((start / full) * 30);
+    const restSize = 30 - (blankSize + size);
+
+    const bar = "█"
+      .repeat(!size && blankSize ? blankSize - 1 : blankSize)
+      .concat(kleur.green("█").repeat(size || 1))
+      .concat("█".repeat(!size && restSize ? restSize - 1 : restSize));
+
+    const markName = data.mainMark === mark[0] ? mark[0] : `${data.mainMark} => ${mark[0]}`;
+    result += `${markName} = ${kleur.yellow().bold(`${duration}ms`)}\n${bar}\n`;
+  });
+  console.log(result);
 }
 
 function publishEvent(data: MarkPostBody) {
-  if (config.mode === "mqtt") {
-    client.publish("test", serializeData(data));
-  } else if (config.mode === "ws") {
-    ws.send(serializeData(data));
-  } else {
-    fetchAPI(data);
+  if (config.log) {
+    process.env.NODE_ENV === "test" ? log(data) : setImmediate(() => log(data));
+  }
+
+  if (!config.offline && config.url) {
+    if (config.url.startsWith("ws://")) {
+      setImmediate(() => ws.send(serializeData(data)));
+    } else {
+      process.env.NODE_ENV === "test" ? fetchAPI(data) : setImmediate(() => fetchAPI(data));
+    }
   }
 }
