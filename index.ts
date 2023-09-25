@@ -4,6 +4,7 @@ import kleur from "kleur";
 
 // send in the headers
 const VERSION = "0.0.1";
+const RECONNECT_INTERVAL = 5000;
 
 let ws: WebSocket;
 let config: PerfyllConfig = {
@@ -53,8 +54,7 @@ const HEADER_MARK = "perfyll_mark";
 const HEADER_HASH = "perfyll_hash";
 
 /**
- * @param {MarkArgs | string} data
- * @param {Header} [headers] - Optional headers; they are mandatory in the FIRST Mark in the E2E marks.
+ * @param {StartMarkArgs | string} data
  * @returns
  */
 export function startMark(data: StartMarkArgs | string) {
@@ -161,19 +161,26 @@ export function getHeaders(mark: string) {
   console.error(`The mark ${mark} must be started before this call`);
 }
 
+let timeout: NodeJS.Timeout;
+
+function connectWS() {
+  if (timeout) clearTimeout(timeout);
+  try {
+    ws = new WebSocket(config.url!, {
+      headers: { "perfyll-version": VERSION, Authorization: config.secret! || "" },
+    });
+    ws.on("error", () => (timeout = setTimeout(connectWS, RECONNECT_INTERVAL)));
+    ws.on("close", () => (timeout = setTimeout(connectWS, RECONNECT_INTERVAL)));
+  } catch {}
+}
+
 export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
-  if (conf.url?.startsWith("ws://")) {
-    ws = new WebSocket(conf.url, { headers: { "perfyll-version": VERSION } });
-  }
+  if (conf.url?.startsWith("ws://")) connectWS();
 }
 
 function generateUUID() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return `${performance.timeOrigin}_${process.pid || performance.now()}`;
 }
 
 function getArgsFromData(data: StartMarkArgs | string) {
@@ -236,7 +243,9 @@ function publishEvent(data: MarkPostBody) {
 
   if (!config.offline && config.url) {
     if (config.url.startsWith("ws://")) {
-      setImmediate(() => ws.send(serializeData(data)));
+      if (ws && ws.readyState === ws.OPEN) {
+        setImmediate(() => ws.send(serializeData(data)));
+      }
     } else {
       process.env.NODE_ENV === "test" ? fetchAPI(data) : setImmediate(() => fetchAPI(data));
     }

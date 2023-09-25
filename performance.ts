@@ -26,7 +26,7 @@ const config: PerfyllConfig = {
   log: false,
   url: "ws://localhost:4000",
 };
-const ITERATIONS = 10000;
+const ITERATIONS = 1000000;
 const DELAY = 0;
 
 if (isMainThread) {
