@@ -26,7 +26,7 @@ const config: PerfyllConfig = {
   log: false,
   url: "ws://localhost:4000",
 };
-const ITERATIONS = 1000000;
+const ITERATIONS = 100000;
 const DELAY = 0;
 
 if (isMainThread) {
@@ -59,11 +59,11 @@ if (isMainThread) {
   worker2.postMessage({ action: "withoutMark" });
   worker1.postMessage({ action: "withMark" });
 } else {
-  init(config);
   parentPort?.on("message", async (data: any) => {
     // to wait for the websocket connection
-    await wait(100);
     if (data.action === "withMark") {
+      init(config);
+      await wait(100);
       const now = Date.now();
       const result = await getStatistics(async () => {
         startMark("database");

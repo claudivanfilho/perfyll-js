@@ -4,7 +4,9 @@ import kleur from "kleur";
 
 // send in the headers
 const VERSION = "0.0.1";
-const RECONNECT_INTERVAL = 5000;
+const RECONNECT_INTERVAL = 10000;
+const MAX_RECONNECT_RETRIES = 20;
+let reconnectRetries = 0;
 
 let ws: WebSocket;
 let config: PerfyllConfig = {
@@ -165,6 +167,8 @@ let timeout: NodeJS.Timeout;
 
 function connectWS() {
   if (timeout) clearTimeout(timeout);
+  reconnectRetries += 1;
+  if (reconnectRetries > MAX_RECONNECT_RETRIES) return;
   try {
     ws = new WebSocket(config.url!, {
       headers: { "perfyll-version": VERSION, Authorization: config.secret! || "" },
@@ -180,7 +184,7 @@ export function init(conf: PerfyllConfig) {
 }
 
 function generateUUID() {
-  return `${performance.timeOrigin}_${process.pid || performance.now()}`;
+  return `${performance.timeOrigin}_${process.pid || ""}_${performance.now() || ""}`;
 }
 
 function getArgsFromData(data: StartMarkArgs | string) {
