@@ -1,6 +1,11 @@
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const server = Bun.serve({
   port: 3000,
-  fetch(request) {
+  async fetch() {
+    await wait(10);
     return new Response(JSON.stringify({ message: "ok" }));
   },
   websocket: {

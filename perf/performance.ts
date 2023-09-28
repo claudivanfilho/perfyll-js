@@ -1,32 +1,18 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { getStatistics, print } from "./analytics";
-import { PerfyllConfig, endMark, init, startMark } from ".";
+import { PerfyllConfig, endMark, init, startMark } from "..";
 import { wait } from "./utils";
 import { Worker, isMainThread, parentPort } from "worker_threads";
 
-function stringify() {
-  JSON.stringify({
-    test1: 10000,
-    test2: 10000,
-    test3: 10000,
-    test4: 10000,
-    test5: 10000,
-    test6: 10000,
-    child: {
-      test1: 10000,
-      test2: 10000,
-      test3: 10000,
-      test4: 10000,
-      test5: 10000,
-      test6: 10000,
-    },
-  });
-}
-
 const config: PerfyllConfig = {
+  url: process.env.WS_ENDPOINT,
+  apiKey: process.env.WS_API_KEY,
+  secret: "123",
   log: false,
-  url: "ws://localhost:4000",
 };
-const ITERATIONS = 100000;
+const ITERATIONS = 10000;
 const DELAY = 0;
 
 if (isMainThread) {
@@ -63,20 +49,19 @@ if (isMainThread) {
     // to wait for the websocket connection
     if (data.action === "withMark") {
       init(config);
-      await wait(100);
+      await wait(2000);
       const now = Date.now();
       const result = await getStatistics(async () => {
         startMark("database");
-        stringify();
         await wait(DELAY);
         endMark("database", []);
       }, ITERATIONS);
       const obj = { result, time: Date.now() - now };
       parentPort?.postMessage(JSON.stringify(obj));
     } else {
+      await wait(2000);
       const now = Date.now();
       const result = await getStatistics(async () => {
-        stringify();
         await wait(DELAY);
       }, ITERATIONS);
       const obj = { result, time: Date.now() - now };

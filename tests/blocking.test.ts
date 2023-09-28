@@ -1,4 +1,4 @@
-import { startMark, endMark, markOnly, init } from ".";
+import { startMark, endMark, markOnly, init } from "..";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

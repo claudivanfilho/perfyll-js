@@ -1,5 +1,5 @@
-import { endMark, endMarkAsync, init, startMark, startMarkAsync } from ".";
-import { wait } from "./utils";
+import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../index";
+import { wait } from "../perf/utils";
 
 init({
   url: "http://localhost",
@@ -23,30 +23,29 @@ describe("Tests for non bloking transactions", () => {
     await wait(100);
     const ref = startMarkAsync("sendEmail", "my-sync-action");
     sendEmail().finally(() => endMarkAsync(ref));
-    endMark("my-sync-action", []);
+    endMark("my-sync-action", ["sendEmail"]);
 
     // does not have to be called in the blocking scope
-    expect(fetchSpy).toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     // wait for the action to finish
-    await wait(500);
+    await wait(600);
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
 
     const { body: bodyString }: { body: string } = fetchSpy.mock.calls.at(0)?.at(1) as any;
     const body = JSON.parse(bodyString);
 
-    expect(body).not.toEqual(expect.objectContaining({ async: true }));
-    expect(body.marks.length).toBe(1);
+    expect(body.marks.length).toBe(2);
     expect(body.marks[0][0]).toBe("my-sync-action");
+    expect(body.marks[1][2]).toBe(0);
 
     const { body: bodyString2 }: { body: string } = fetchSpy.mock.calls.at(1)?.at(1) as any;
     const body2 = JSON.parse(bodyString2);
 
     expect(body2).toEqual(
       expect.objectContaining({
-        mainMark: "my-sync-action",
-        async: true,
+        main: "my-sync-action",
       })
     );
     expect(body2.marks.length).toBe(1);

@@ -2,24 +2,23 @@
 import { WebSocket } from "ws";
 import kleur from "kleur";
 
-// send in the headers
 const VERSION = "0.0.1";
 const RECONNECT_INTERVAL = 10000;
-const MAX_RECONNECT_RETRIES = 20;
+const MAX_RECONNECT_RETRIES = 5;
 let reconnectRetries = 0;
 
 let ws: WebSocket;
 let config: PerfyllConfig = {
   url: "",
+  apiKey: "",
   secret: "",
-  token: "",
   log: true,
   offline: false,
 };
 
 export type PerfyllConfig = {
   url?: string;
-  token?: string;
+  apiKey?: string;
   secret?: string;
   /** default is true */
   log?: boolean;
@@ -40,10 +39,8 @@ export type EndMarkArgs = {
 };
 
 export type MarkPostBody = {
-  mainMark: string;
-  mainMarkHash: string;
-  fromClient?: boolean;
-  async?: boolean;
+  main: string;
+  hash: string;
   marks: [string, number, number, MarkExtraArgs][];
 };
 
@@ -76,8 +73,8 @@ export function endMark(data: EndMarkArgs | string, subMarks?: string[]) {
   if (!markRef) return;
 
   const start = markRef[0];
-  const mainMarkHash = markRef[2] || generateUUID();
-  const mainMark = markRef[3];
+  const hash = markRef[2] || generateUUID();
+  const main = markRef[3];
   const currentExtra = markRef[4];
 
   if (!subMarks) {
@@ -100,48 +97,54 @@ export function endMark(data: EndMarkArgs | string, subMarks?: string[]) {
   mapMarks.delete(mark);
 
   return publishEvent({
-    mainMark,
-    mainMarkHash,
+    main,
+    hash,
     marks,
   });
 }
 
 export function markOnly(data: StartMarkArgs | string, send = false) {
   const args = getArgsFromData(data);
-  const newMainMark = args.headers?.get(HEADER_MARK) || args.mark;
-  const currentMainMark = mapMarks.get(newMainMark);
+  const main = args.headers?.get(HEADER_MARK) || args.mark;
+  const currentMainMark = mapMarks.get(main);
   if (currentMainMark && !currentMainMark[2]) {
     currentMainMark[2] = generateUUID();
   }
-  const mainMarkHash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+  const hash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
   const now = Date.now();
 
   if (send) {
     return publishEvent({
-      mainMark: newMainMark,
-      mainMarkHash,
+      main,
+      hash,
       marks: [[args.mark, now, now, args.extra]],
     });
   } else {
-    mapMarks.set(args.mark, [now, now, newMainMark, mainMarkHash, args.extra]);
+    mapMarks.set(args.mark, [now, now, main, hash, args.extra]);
   }
 }
 
 export function startMarkAsync(data: StartMarkArgs | string, mainMark?: string) {
   const args = getArgsFromData(data);
-  const newMainMark = args.headers?.get(HEADER_MARK) || mainMark || args.mark;
-  const currentMainMark = mapMarks.get(newMainMark);
+  let main = args.headers?.get(HEADER_MARK) || mainMark || args.mark;
+  const currentMainMark = mapMarks.get(main);
   if (currentMainMark && !currentMainMark[2]) {
     currentMainMark[2] = generateUUID();
   }
-  const mainMarkHash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+  if (currentMainMark) {
+    main = currentMainMark[3];
+  }
+  const hash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
 
   const mark: MarkPostBody = {
-    mainMark: newMainMark,
-    mainMarkHash,
-    async: true,
+    main,
+    hash,
     marks: [[args.mark, Date.now(), 0, args.extra]],
   };
+
+  if (mainMark) {
+    mapMarks.set(args.mark, [Date.now(), 0, hash, main, args.extra]);
+  }
 
   return mark;
 }
@@ -171,16 +174,27 @@ function connectWS() {
   if (reconnectRetries > MAX_RECONNECT_RETRIES) return;
   try {
     ws = new WebSocket(config.url!, {
-      headers: { "perfyll-version": VERSION, Authorization: config.secret! || "" },
+      headers: {
+        "perfyll-version": VERSION,
+        Authorization: config.secret! || "",
+        "x-api-key": config.apiKey,
+      },
     });
-    ws.on("error", () => (timeout = setTimeout(connectWS, RECONNECT_INTERVAL)));
-    ws.on("close", () => (timeout = setTimeout(connectWS, RECONNECT_INTERVAL)));
+    ws.on("open", () => console.log("Perfyll analytics stream connected"));
+    ws.on("error", (...args) => {
+      console.log("error", args);
+      timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
+    });
+    ws.on("close", (...args) => {
+      console.log("close", args);
+      timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
+    });
   } catch {}
 }
 
 export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
-  if (conf.url?.startsWith("ws://")) connectWS();
+  if (conf.url?.startsWith("ws")) connectWS();
 }
 
 function generateUUID() {
@@ -210,7 +224,8 @@ function fetchAPI(event: MarkPostBody) {
     headers: {
       "Content-Type": "application/json",
       "perfyll-version": VERSION,
-      Authorization: config.token!,
+      Authorization: config.secret || "",
+      "x-api-key": config.apiKey!,
     },
   });
 }
@@ -222,21 +237,23 @@ function serializeData(data: MarkPostBody) {
 function log(data: MarkPostBody) {
   let full = data.marks[0][2] - data.marks[0][1];
   let result = "";
-  data.marks.forEach((mark) => {
-    const duration = mark[2] - mark[1];
+  for (let i = 0; i < data.marks.length; i++) {
+    const mark = data.marks[i];
+    const duration = (mark[2] || mark[1]) - mark[1];
     const start = mark[1] - data.marks[0][1];
     const size = Math.ceil((duration / full) * 30);
     const blankSize = Math.ceil((start / full) * 30);
     const restSize = 30 - (blankSize + size);
-
     const bar = "█"
       .repeat(!size && blankSize ? blankSize - 1 : blankSize)
       .concat(kleur.green("█").repeat(size || 1))
       .concat("█".repeat(!size && restSize ? restSize - 1 : restSize));
 
-    const markName = data.mainMark === mark[0] ? mark[0] : `${data.mainMark} => ${mark[0]}`;
-    result += `${markName} = ${kleur.yellow().bold(`${duration}ms`)}\n${bar}\n`;
-  });
+    const markName = data.main === mark[0] ? mark[0] : `${data.main} => ${mark[0]}`;
+    result += `${markName} = ${kleur
+      .yellow()
+      .bold(`${mark[2] ? `${duration}ms` : "not finished"}`)}\n${bar}\n`;
+  }
   console.log(result);
 }
 
@@ -246,7 +263,7 @@ function publishEvent(data: MarkPostBody) {
   }
 
   if (!config.offline && config.url) {
-    if (config.url.startsWith("ws://")) {
+    if (config.url.startsWith("ws")) {
       if (ws && ws.readyState === ws.OPEN) {
         setImmediate(() => ws.send(serializeData(data)));
       }
