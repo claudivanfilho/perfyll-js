@@ -19,11 +19,11 @@ describe("Tests for non bloking transactions", () => {
     };
 
     // make a non blocking call
-    startMark("my-sync-action");
+    startMark("syncAction");
     await wait(100);
-    const ref = startMarkAsync("sendEmail", "my-sync-action");
+    const ref = startMarkAsync("sendEmail", "syncAction");
     sendEmail().finally(() => endMarkAsync(ref));
-    endMark("my-sync-action", ["sendEmail"]);
+    endMark("syncAction", ["sendEmail"]);
 
     // does not have to be called in the blocking scope
     expect(fetchSpy).toHaveBeenCalledTimes(1);

@@ -18,6 +18,8 @@ yarn add perfyll
 
 ## Usage Example (Dev mode)
 
+### Tracking blocking code
+
 ```javascript
 import { startMark, endMark } from "perfyll";
 
@@ -33,6 +35,7 @@ async function myApiRoute() {
     await wait(20);
     await databaseQuery();
     await wait(100);
+    // Having a second argument with the subMarks will conclude the event and record the outcome.
     endMark("registerUser", ["database"]);
   };
 
@@ -43,6 +46,30 @@ async function myApiRoute() {
 This will display in the console.
 
 ![console result](https://github.com/claudivanfilho/perfyll-js/raw/main/images/console.png)
+
+### Tracking nonblocking code
+
+```javascript
+import { startMark, endMark, startMarkAsync, endMarkAsync } from "perfyll";
+
+const sendEmail = async () => {
+  await wait(500);
+  return "email sent";
+};
+
+async function myApiRoute() {
+  startMark("syncAction");
+  await wait(100);
+  const ref = startMarkAsync("sendEmail", "syncAction");
+  sendEmail().finally(() => endMarkAsync(ref));
+  // Having a second argument with the subMarks will conclude the event and record the outcome.
+  endMark("syncAction", ["sendEmail"]);
+}
+```
+
+This will display in the console.
+
+![console2 result](https://github.com/claudivanfilho/perfyll-js/raw/main/images/console2.png)
 
 ## [WIP] Usage Example ([With Perfyll Cloud](https://perfyll.com))
 

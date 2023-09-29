@@ -1,6 +1,6 @@
 {
   "name": "perfyll",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Perfyll is a lightweight JavaScript library designed to empower developers in tracking performance and user actions from an end-to-end (E2E) perspective.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,6 +17,10 @@
     "APM",
     "Real User Monitoring"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/claudivanfilho/perfyll-js.git"
+  },
   "scripts": {
     "test": "jest",
     "build": "tsc",
