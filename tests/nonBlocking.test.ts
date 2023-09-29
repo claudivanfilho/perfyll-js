@@ -37,7 +37,7 @@ describe("Tests for non bloking transactions", () => {
     const body = JSON.parse(bodyString);
 
     expect(body.marks.length).toBe(2);
-    expect(body.marks[0][0]).toBe("my-sync-action");
+    expect(body.marks[0][0]).toBe("syncAction");
     expect(body.marks[1][2]).toBe(0);
 
     const { body: bodyString2 }: { body: string } = fetchSpy.mock.calls.at(1)?.at(1) as any;
@@ -45,7 +45,7 @@ describe("Tests for non bloking transactions", () => {
 
     expect(body2).toEqual(
       expect.objectContaining({
-        main: "my-sync-action",
+        main: "syncAction",
       })
     );
     expect(body2.marks.length).toBe(1);
