@@ -1,10 +1,10 @@
 {
   "name": "perfyll",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Perfyll is a lightweight JavaScript library designed to empower developers in tracking performance and user actions from an end-to-end (E2E) perspective.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Claudivan Filho",
   "files": [
     "dist/**/*"

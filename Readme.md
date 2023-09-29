@@ -1,6 +1,6 @@
 # Perfyll
 
-Perfyll is a lightweight JavaScript library designed to empower developers in tracking performance and user actions from an end-to-end (E2E) perspective. This library allows you to seamlessly gather and display performance data either on the cloud platform [perfyll.com](perfyll.com) or for local debugging purposes.
+Perfyll is a lightweight JavaScript library designed to empower developers in tracking performance and user actions from an end-to-end (E2E) perspective. This library allows you to seamlessly gather and display performance data either on the cloud platform [perfyll.com](https://perfyll.com) or for local debugging purposes.
 
 ## Installation
 
@@ -42,9 +42,9 @@ async function myApiRoute() {
 
 This will display in the console.
 
-![console result](./images/console.png)
+![console result](https://github.com/claudivanfilho/perfyll-js/raw/main/images/console.png)
 
-## [WIP] Usage Example ([With Perfyll Cloud](perfyll.com))
+## [WIP] Usage Example ([With Perfyll Cloud](https://perfyll.com))
 
 Here's a brief example of how you can use Perfyll to track an API route's performance:
 

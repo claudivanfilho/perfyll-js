@@ -9,16 +9,15 @@ const server = Bun.serve({
     return new Response(JSON.stringify({ message: "ok" }));
   },
   websocket: {
-    message(ws, message) {
+    message(_, message) {
       console.log(message);
     }, // a message is received
-    open(ws) {
+    open() {
       console.log("opened");
     }, // a socket is opened
-    close(ws, code, message) {
+    close() {
       console.log("closed");
     }, // a socket is closed
-    drain(ws) {}, // the socket is ready to receive more data
   },
 });
 

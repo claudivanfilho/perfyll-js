@@ -10,5 +10,5 @@
     "declaration": true
   },
   "include": ["*.ts", "perf", "tests"],
-  "exclude": ["tests", "server", "server*", "perf"]
+  "exclude": ["tests", "perf"]
 }
