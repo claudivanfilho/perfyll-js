@@ -7,13 +7,13 @@ import { wait } from "./utils";
 import { Worker, isMainThread, parentPort } from "worker_threads";
 
 const config: PerfyllConfig = {
-  url: process.env.WS_ENDPOINT,
-  apiKey: process.env.WS_API_KEY,
-  secret: "123",
-  log: false,
+  publicKey: process.env.PUBLIC_KEY!,
+  secret: process.env.SECRET,
+  serviceName: "my-server",
 };
-const ITERATIONS = 10000;
-const DELAY = 0;
+
+const ITERATIONS = 1;
+const DELAY = 10;
 
 if (isMainThread) {
   const worker1 = new Worker(__filename);
@@ -26,7 +26,7 @@ if (isMainThread) {
     resultWithMark = JSON.parse(result1);
     if (resultWithoutMark) {
       console.log(
-        `${config.url} => For ${ITERATIONS} iterations and process with delay of ${DELAY} milli\nwithMark = ${resultWithMark.time}ms\nwithoutMark = ${resultWithoutMark.time}ms\n`
+        `For ${ITERATIONS} iterations and process with delay of ${DELAY} milli\nwithMark = ${resultWithMark.time}ms\nwithoutMark = ${resultWithoutMark.time}ms\n`
       );
       print(resultWithMark.result, resultWithoutMark.result);
     }
@@ -36,7 +36,7 @@ if (isMainThread) {
     resultWithoutMark = JSON.parse(result2);
     if (resultWithMark) {
       console.log(
-        `${config.url} => For ${ITERATIONS} iterations and process with delay of ${DELAY} milli\nwithMark = ${resultWithMark.time}ms\nwithoutMark = ${resultWithoutMark.time}ms\n`
+        `For ${ITERATIONS} iterations and process with delay of ${DELAY} milli\nwithMark = ${resultWithMark.time}ms\nwithoutMark = ${resultWithoutMark.time}ms\n`
       );
       print(resultWithMark.result, resultWithoutMark.result);
     }
@@ -49,17 +49,17 @@ if (isMainThread) {
     // to wait for the websocket connection
     if (data.action === "withMark") {
       init(config);
-      await wait(2000);
+      await wait(5000);
       const now = Date.now();
       const result = await getStatistics(async () => {
-        startMark("database");
-        await wait(DELAY);
-        endMark("database", []);
+        startMark("markTest");
+        await wait(15);
+        endMark("markTest").send();
       }, ITERATIONS);
       const obj = { result, time: Date.now() - now };
       parentPort?.postMessage(JSON.stringify(obj));
     } else {
-      await wait(2000);
+      await wait(3000);
       const now = Date.now();
       const result = await getStatistics(async () => {
         await wait(DELAY);

@@ -1,40 +1,46 @@
-// TODO Repeatable AND subMarks to markAsync
+import ansis from "ansis";
 import { WebSocket } from "ws";
-import kleur from "kleur";
 
-const VERSION = "0.0.1";
+const API_REST_URL = "https://restapi.perfyllapp.com";
+const API_WS_URL = "wss://wsapi.perfyllapp.com";
+const VERSION = "1.0.0";
 const RECONNECT_INTERVAL = 10000;
 const MAX_RECONNECT_RETRIES = 5;
-let reconnectRetries = 0;
 
+let timeout: NodeJS.Timeout;
+let instanceId: string;
+let instanceCountry: string;
+let reconnectRetries = 0;
 let ws: WebSocket;
 let config: PerfyllConfig = {
-  url: "",
-  apiKey: "",
+  publicKey: "",
   secret: "",
-  log: true,
-  offline: false,
+  serviceName: "",
+  logTimeline: false,
+  forceHttp: false,
 };
 
 export type PerfyllConfig = {
-  url?: string;
-  apiKey?: string;
+  publicKey: string;
   secret?: string;
-  /** default is true */
-  log?: boolean;
+  serviceName?: string;
+  /** It will force a http request, default is false */
+  forceHttp?: boolean;
   /** default is false */
-  offline?: boolean;
+  logTimeline?: boolean;
+  customHttpUrl?: string;
+  customWSUrl?: string;
 };
 
-export type MarkExtraArgs = { author?: string; [key: string]: string | undefined };
+export type MarkExtraArgs = { user?: string; [key: string]: string | undefined };
 
 export type StartMarkArgs = EndMarkArgs & {
   headers?: Headers;
   repeatable?: boolean;
+  mainMark?: string;
 };
 
 export type EndMarkArgs = {
-  mark: string;
   extra?: MarkExtraArgs;
 };
 
@@ -44,89 +50,74 @@ export type MarkPostBody = {
   marks: [string, number, number, MarkExtraArgs][];
 };
 
-// [start, end, hash, main, extra]
-const mapMarks: Map<string, [number, number, string, string, MarkExtraArgs]> = new Map();
-// [[start, end, extra]]
-// const repeatableMarks: Map<string, [number, number, MarkExtraArgs][]> = new Map();
+const mapMarks: Map<
+  string,
+  [start: number, end: number, hash: string, main: string, extra: MarkExtraArgs]
+> = new Map();
 
 const HEADER_MARK = "perfyll_mark";
 const HEADER_HASH = "perfyll_hash";
 
 /**
- * @param {StartMarkArgs | string} data
+ * @param {string} mark e.g. productClick, productDBQuery, registerUser, ...
+ * @param {StartMarkArgs} args
  * @returns
  */
-export function startMark(data: StartMarkArgs | string) {
-  const { mark, extra, headers } = getArgsFromData(data);
+export function startMark(mark: string, args?: StartMarkArgs) {
+  const { extra, headers } = args || {};
 
   const hash = headers?.get(HEADER_HASH) || "";
   const main = headers?.get(HEADER_MARK) || mark;
-  mapMarks.set(mark, [Date.now(), 0, hash, main, extra]);
+  mapMarks.set(mark, [Date.now(), 0, hash, main, extra || {}]);
 
   return;
 }
 
-export function endMark(data: EndMarkArgs | string, subMarks?: string[]) {
-  const { mark, extra } = getArgsFromData(data);
-
+/**
+ * It ends the markation, you must invoke .send() method after to send the mark to the Cloud.
+ * @param mark
+ * @param data
+ * @returns
+ */
+export function endMark(mark: string, data?: EndMarkArgs) {
+  const extra = data?.extra;
   const markRef = mapMarks.get(mark)!;
-  if (!markRef) return;
-
-  const start = markRef[0];
-  const hash = markRef[2] || generateUUID();
-  const main = markRef[3];
-  const currentExtra = markRef[4];
-
-  if (!subMarks) {
+  if (markRef) {
     markRef[1] = Date.now();
-    return;
+    markRef[4] = Object.assign(markRef[4], extra);
   }
-
-  let marks: [string, number, number, MarkExtraArgs][] = [
-    [mark, start, Date.now(), Object.assign(currentExtra, extra)],
-  ];
-
-  for (let i = 0; i < subMarks.length; i++) {
-    const subMarkName = subMarks[i];
-    const subMark = mapMarks.get(subMarkName)!;
-    if (!subMark) continue;
-    marks.push([subMarkName, subMark[0], subMark[1], subMark[4]]);
-    mapMarks.delete(subMarkName);
-  }
-
-  mapMarks.delete(mark);
-
-  return publishEvent({
-    main,
-    hash,
-    marks,
-  });
+  return send(mark);
 }
 
-export function markOnly(data: StartMarkArgs | string, send = false) {
-  const args = getArgsFromData(data);
-  const main = args.headers?.get(HEADER_MARK) || args.mark;
+/**
+ * It creates a mark, you must invoke .send() method after to send the mark to the Cloud.
+ * @param mark
+ * @param data
+ * @returns
+ */
+export function markOnly(mark: string, data?: StartMarkArgs) {
+  const { headers, extra } = data || {};
+  const main = headers?.get(HEADER_MARK) || mark;
   const currentMainMark = mapMarks.get(main);
   if (currentMainMark && !currentMainMark[2]) {
     currentMainMark[2] = generateUUID();
   }
-  const hash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+  const hash = headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
   const now = Date.now();
+  mapMarks.set(mark, [now, now, hash, main, extra || {}]);
 
-  if (send) {
-    return publishEvent({
-      main,
-      hash,
-      marks: [[args.mark, now, now, args.extra]],
-    });
-  } else {
-    mapMarks.set(args.mark, [now, now, main, hash, args.extra]);
-  }
+  return send(mark);
 }
 
-export function startMarkAsync(data: StartMarkArgs | string, mainMark?: string) {
-  const args = getArgsFromData(data);
-  let main = args.headers?.get(HEADER_MARK) || mainMark || args.mark;
+/**
+ * It is used to mark asynchronous code like a sendEmail event.
+ * @param mark
+ * @param data
+ * @returns a mark reference to be passed to the endMarkAsync.
+ */
+export function startMarkAsync(mark: string, data?: StartMarkArgs) {
+  const { headers, extra = {}, mainMark } = data || {};
+  let main = headers?.get(HEADER_MARK) || mainMark || mark;
   const currentMainMark = mapMarks.get(main);
   if (currentMainMark && !currentMainMark[2]) {
     currentMainMark[2] = generateUUID();
@@ -134,26 +125,38 @@ export function startMarkAsync(data: StartMarkArgs | string, mainMark?: string) 
   if (currentMainMark) {
     main = currentMainMark[3];
   }
-  const hash = args.headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
+  const hash = headers?.get(HEADER_HASH) || currentMainMark?.[2] || generateUUID();
 
-  const mark: MarkPostBody = {
+  const markBody: MarkPostBody = {
     main,
     hash,
-    marks: [[args.mark, Date.now(), 0, args.extra]],
+    marks: [[mark, Date.now(), 0, extra]],
   };
 
   if (mainMark) {
-    mapMarks.set(args.mark, [Date.now(), 0, hash, main, args.extra]);
+    mapMarks.set(mark, [Date.now(), 0, hash, main, extra]);
   }
 
-  return mark;
+  return markBody;
 }
 
+/**
+ * It ends the markation and instantly send the mark to the Cloud.
+ * @param ref the reference returned by startMarkAsync
+ * @returns
+ */
 export function endMarkAsync(ref: MarkPostBody) {
   ref.marks[0][2] = Date.now();
-  return publishEvent(ref);
+  publishEvent(ref);
 }
 
+/**
+ * It is used to generate the header the E2E markations.
+ * The headers used are: **perfyll_mark** and **perfyll_hash**.
+ * You must enable these headers in your cors configuration (**Access-Control-Allow-Headers**).
+ * @param mark
+ * @returns
+ */
 export function getHeaders(mark: string) {
   if (mapMarks.get(mark)) {
     const uuid = mapMarks.get(mark)![2] || generateUUID();
@@ -166,68 +169,136 @@ export function getHeaders(mark: string) {
   console.error(`The mark ${mark} must be started before this call`);
 }
 
-let timeout: NodeJS.Timeout;
+/**
+ * The initialization function, it must be declared outside the function scope.
+ * @param conf
+ */
+export function init(conf: PerfyllConfig) {
+  config = Object.assign(config, conf);
+  if (typeof window !== "object" && !config.forceHttp) {
+    if (instanceId) {
+      connectWS();
+    } else {
+      if (!instanceId) {
+        fetchCreateInstance().then((res) => {
+          instanceId = res.instanceId;
+          instanceCountry = res.country;
+          instanceId && connectWS();
+        });
+      } else {
+        if (!ws || ws.readyState !== ws.OPEN) {
+          connectWS();
+        }
+      }
+    }
+  }
+}
 
 function connectWS() {
   if (timeout) clearTimeout(timeout);
   reconnectRetries += 1;
   if (reconnectRetries > MAX_RECONNECT_RETRIES) return;
   try {
-    ws = new WebSocket(config.url!, {
+    ws = new WebSocket(config.customWSUrl || API_WS_URL, {
       headers: {
         "perfyll-version": VERSION,
         Authorization: config.secret! || "",
-        "x-api-key": config.apiKey,
+        "x-api-key": config.publicKey,
+        "instance-id": instanceId,
+        "service-name": config.serviceName,
+        country: instanceCountry,
       },
     });
-    ws.on("open", () => console.log("Perfyll analytics stream connected"));
+    ws.on("open", () => {
+      console.log("Perfyll stream connected");
+    });
     ws.on("error", (...args) => {
-      console.log("error", args);
+      console.log("Perfyll stream error", args);
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
     ws.on("close", (...args) => {
-      console.log("close", args);
+      console.log("Perfyll stream closed", args);
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
   } catch {}
 }
 
-export function init(conf: PerfyllConfig) {
-  config = Object.assign(config, conf);
-  if (conf.url?.startsWith("ws")) connectWS();
+function send(mark: string) {
+  return {
+    /**
+     *
+     * @param subMarks (optional) array of subMarks
+     * @returns
+     */
+    send(subMarks?: string[]) {
+      const markRef = mapMarks.get(mark)!;
+      const start = markRef[0];
+      const end = markRef[1];
+      const hash = markRef[2] || generateUUID();
+      const main = markRef[3];
+      const currentExtra = markRef[4];
+
+      let marks: [string, number, number, MarkExtraArgs][] = [[mark, start, end, currentExtra]];
+
+      if (subMarks) {
+        for (let i = 0; i < subMarks.length; i++) {
+          const subMarkName = subMarks[i];
+          const subMark = mapMarks.get(subMarkName)!;
+          if (!subMark) continue;
+          marks.push([subMarkName, subMark[0], subMark[1], subMark[4]]);
+          mapMarks.delete(subMarkName);
+        }
+      }
+
+      mapMarks.delete(mark);
+
+      return publishEvent({
+        main,
+        hash,
+        marks,
+      });
+    },
+  };
 }
 
 function generateUUID() {
+  if (typeof window === "object") {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
   return `${performance.timeOrigin}_${process.pid || ""}_${performance.now() || ""}`;
 }
 
-function getArgsFromData(data: StartMarkArgs | string) {
-  let mark: string;
-  let extra: MarkExtraArgs = {};
-  let headers: Headers | undefined;
-
-  if (typeof data === "string") {
-    return { mark: data, extra: {} };
-  } else {
-    mark = data.mark;
-    extra = data.extra || {};
-    headers = data.headers;
-  }
-
-  return { mark, extra, headers };
-}
-
-function fetchAPI(event: MarkPostBody) {
-  return fetch(config.url!, {
+async function fetchAPI(event: MarkPostBody) {
+  return fetch(`${config.customHttpUrl || API_REST_URL}/analytics`, {
     method: "POST",
     body: JSON.stringify(event),
     headers: {
       "Content-Type": "application/json",
       "perfyll-version": VERSION,
-      Authorization: config.secret || "",
-      "x-api-key": config.apiKey!,
+      "instance-id": instanceId,
+      Authorization: config.secret! || "",
+      "x-api-key": config.publicKey!,
     },
-  });
+  }).catch(() => {});
+}
+
+async function fetchCreateInstance() {
+  return fetch(`${config.customHttpUrl || API_REST_URL}/instance`, {
+    method: "POST",
+    body: JSON.stringify({ serviceName: config.serviceName }),
+    headers: {
+      "Content-Type": "application/json",
+      "perfyll-version": VERSION,
+      Authorization: config.secret || "",
+      "x-api-key": config.publicKey!,
+    },
+  })
+    .then((res) => res.json())
+    .catch(() => {});
 }
 
 function serializeData(data: MarkPostBody) {
@@ -246,29 +317,37 @@ function log(data: MarkPostBody) {
     const restSize = 30 - (blankSize + size);
     const bar = "█"
       .repeat(!size && blankSize ? blankSize - 1 : blankSize)
-      .concat(kleur.green("█").repeat(size || 1))
+      .concat(ansis.green("█").repeat(size || 1))
       .concat("█".repeat(!size && restSize ? restSize - 1 : restSize));
 
     const markName = data.main === mark[0] ? mark[0] : `${data.main} => ${mark[0]}`;
-    result += `${markName} = ${kleur
-      .yellow()
-      .bold(`${mark[2] ? `${duration}ms` : "not finished"}`)}\n${bar}\n`;
+    result += `${markName} = ${ansis.yellow.bold(
+      `${mark[2] ? `${duration}ms` : "not finished"}`
+    )}\n${bar}\n`;
   }
   console.log(result);
 }
 
 function publishEvent(data: MarkPostBody) {
-  if (config.log) {
-    process.env.NODE_ENV === "test" ? log(data) : setImmediate(() => log(data));
+  if (config.logTimeline) {
+    log(data);
   }
 
-  if (!config.offline && config.url) {
-    if (config.url.startsWith("ws")) {
+  if (config.forceHttp || !config.secret) {
+    if (config.publicKey) {
+      return fetchAPI(data);
+    } else {
+      console.error("PublicKey not provided");
+    }
+  } else if (config.secret) {
+    if (typeof window !== "undefined") {
+      console.error("Do not expose your secret on the client side");
+    } else {
       if (ws && ws.readyState === ws.OPEN) {
         setImmediate(() => ws.send(serializeData(data)));
+      } else {
+        setImmediate(() => fetchAPI(data));
       }
-    } else {
-      process.env.NODE_ENV === "test" ? fetchAPI(data) : setImmediate(() => fetchAPI(data));
     }
   }
 }

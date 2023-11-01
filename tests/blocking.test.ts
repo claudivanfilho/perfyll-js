@@ -1,11 +1,13 @@
-import { startMark, endMark, markOnly, init } from "..";
+import { startMark, endMark, markOnly, init } from "../index";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 init({
-  url: "http://localhost",
+  publicKey: "123",
+  forceHttp: true,
+  logTimeline: true,
 });
 
 describe("Tests for bloking transactions", () => {
@@ -19,7 +21,7 @@ describe("Tests for bloking transactions", () => {
     const registerUser = async () => {
       startMark("registerUser");
       await wait(100);
-      endMark("registerUser", []);
+      endMark("registerUser").send();
     };
 
     await registerUser();
@@ -49,7 +51,7 @@ describe("Tests for bloking transactions", () => {
       await wait(20);
       await databaseQuery();
       await wait(100);
-      endMark("registerUser", ["database"]);
+      endMark("registerUser").send(["database"]);
     };
 
     await registerUser();
@@ -74,7 +76,7 @@ describe("Tests for bloking transactions", () => {
       await wait(100);
       markOnly("hitThisStage");
       await wait(20);
-      endMark("registerUser", ["hitThisStage"]);
+      endMark("registerUser").send(["hitThisStage"]);
     };
 
     await registerUser();

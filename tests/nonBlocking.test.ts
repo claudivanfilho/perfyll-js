@@ -2,7 +2,9 @@ import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../index
 import { wait } from "../perf/utils";
 
 init({
-  url: "http://localhost",
+  publicKey: "123",
+  forceHttp: true,
+  logTimeline: true,
 });
 
 describe("Tests for non bloking transactions", () => {
@@ -21,9 +23,9 @@ describe("Tests for non bloking transactions", () => {
     // make a non blocking call
     startMark("syncAction");
     await wait(100);
-    const ref = startMarkAsync("sendEmail", "syncAction");
+    const ref = startMarkAsync("sendEmail", { mainMark: "syncAction" });
     sendEmail().finally(() => endMarkAsync(ref));
-    endMark("syncAction", ["sendEmail"]);
+    endMark("syncAction").send(["sendEmail"]);
 
     // does not have to be called in the blocking scope
     expect(fetchSpy).toHaveBeenCalledTimes(1);
