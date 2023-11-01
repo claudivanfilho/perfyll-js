@@ -3,7 +3,7 @@ name: Jest Tests
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   run-jest-tests:
