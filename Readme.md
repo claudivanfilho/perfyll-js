@@ -1,7 +1,9 @@
 ![jest workflow](https://github.com/claudivanfilho/perfyll-js/actions/workflows/tests.yaml/badge.svg)
 [![npm version](https://img.shields.io/npm/v/perfyll.svg?color=green)](https://www.npmjs.com/package/perfyll)
 
-# Perfyll
+# Perfyll (VERSION 1 IS NOW AVAILABLE 🎉)
+
+## Get started by signing up at [perfyll.com](perfyll.com) and create your account
 
 Perfyll is a lightweight JavaScript library designed to empower developers in tracking performance and user actions from an end-to-end (E2E) perspective. This library allows you to seamlessly gather and display performance data either on the cloud platform [perfyll.com](https://perfyll.com) or for local debugging purposes.
 
