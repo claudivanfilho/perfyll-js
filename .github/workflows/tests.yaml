@@ -1,7 +1,9 @@
 name: Jest Tests
 
 on:
-  pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   run-jest-tests:
