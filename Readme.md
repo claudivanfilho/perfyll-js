@@ -37,16 +37,16 @@ init({
 });
 ```
 
-### markOnly()
+### mark()
 
 ```javascript
-import { init, markOnly } from "perfyll";
+import { init, mark } from "perfyll";
 
 init({ publicKey: "<publicKey>" });
 
 export default function MyComponent() {
   function onCheckoutButtonClicked() {
-    markOnly("checkoutButtonClicked", {extra: {buttonColor:  "blue"}}).send()
+    mark("checkoutButtonClicked", {extra: {buttonColor:  "blue"}}).send()
   }
 
   return ...

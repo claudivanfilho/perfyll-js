@@ -90,12 +90,13 @@ export function endMark(mark: string, data?: EndMarkArgs) {
 }
 
 /**
+ *
  * It creates a mark, you must invoke .send() method after to send the mark to the Cloud.
  * @param mark
  * @param data
  * @returns
  */
-export function markOnly(mark: string, data?: StartMarkArgs) {
+export function mark(mark: string, data?: StartMarkArgs) {
   const { headers, extra } = data || {};
   const main = headers?.get(HEADER_MARK) || mark;
   const currentMainMark = mapMarks.get(main);

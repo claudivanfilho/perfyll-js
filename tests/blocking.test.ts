@@ -1,4 +1,4 @@
-import { startMark, endMark, markOnly, init } from "../index";
+import { startMark, endMark, mark, init } from "../index";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,7 +74,7 @@ describe("Tests for bloking transactions", () => {
     const registerUser = async () => {
       startMark("registerUser");
       await wait(100);
-      markOnly("hitThisStage");
+      mark("hitThisStage");
       await wait(20);
       endMark("registerUser").send(["hitThisStage"]);
     };
