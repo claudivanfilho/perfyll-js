@@ -1,8 +1,8 @@
 import ansis from "ansis";
 import { WebSocket } from "ws";
 
-const API_REST_URL = "https://restapi.perfyllapp.com";
-const API_WS_URL = "wss://wsapi.perfyllapp.com";
+const API_REST_URL = "https://ye7mu1sifd.execute-api.us-east-1.amazonaws.com/prod";
+const API_WS_URL = "wss://l98b2n29xi.execute-api.us-east-1.amazonaws.com/prod/";
 const VERSION = "1.0.0";
 const RECONNECT_INTERVAL = 10000;
 const MAX_RECONNECT_RETRIES = 5;
@@ -182,9 +182,11 @@ export function init(conf: PerfyllConfig) {
     } else {
       if (!instanceId) {
         fetchCreateInstance().then((res) => {
-          instanceId = res.instanceId;
-          instanceCountry = res.country;
-          instanceId && connectWS();
+          if (res) {
+            instanceId = res.instanceId;
+            instanceCountry = res.country;
+            instanceId && connectWS();
+          }
         });
       } else {
         if (!ws || ws.readyState !== ws.OPEN) {
@@ -203,7 +205,7 @@ function connectWS() {
     ws = new WebSocket(config.customWSUrl || API_WS_URL, {
       headers: {
         "perfyll-version": VERSION,
-        Authorization: config.secret! || "",
+        Authorization: config.secret!,
         "x-api-key": config.publicKey,
         "instance-id": instanceId,
         "service-name": config.serviceName,
@@ -213,12 +215,12 @@ function connectWS() {
     ws.on("open", () => {
       console.log("Perfyll stream connected");
     });
-    ws.on("error", (...args) => {
-      console.log("Perfyll stream error", args);
+    ws.on("error", () => {
+      console.log("Perfyll stream error");
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
-    ws.on("close", (...args) => {
-      console.log("Perfyll stream closed", args);
+    ws.on("close", () => {
+      console.log("Perfyll stream closed");
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
   } catch {}
@@ -281,7 +283,7 @@ async function fetchAPI(event: MarkPostBody) {
       "Content-Type": "application/json",
       "perfyll-version": VERSION,
       "instance-id": instanceId,
-      Authorization: config.secret! || "",
+      Authorization: config.secret!,
       "x-api-key": config.publicKey!,
     },
   }).catch(() => {});
