@@ -1,6 +1,6 @@
 {
   "name": "perfyll",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Perfyll, a lightweight JavaScript library, seamlessly integrates Real User Monitoring (RUM), Application Performance Monitoring (APM), Log Management, and Error Tracking with the efficiency of a cloud service. Elevate your application's performance effortlessly. Explore more at https://perfyll.com",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

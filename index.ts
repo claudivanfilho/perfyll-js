@@ -236,7 +236,9 @@ export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
   if (typeof window !== "object" && !config.forceHttp) {
     if (instanceId) {
-      connectWS();
+      if (!ws || ws.readyState !== ws.OPEN) {
+        connectWS();
+      }
     } else {
       if (!instanceId) {
         fetchCreateInstance().then((res) => {
