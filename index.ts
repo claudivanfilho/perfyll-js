@@ -5,7 +5,7 @@ const API_REST_URL = "https://ye7mu1sifd.execute-api.us-east-1.amazonaws.com/pro
 const API_WS_URL = "wss://l98b2n29xi.execute-api.us-east-1.amazonaws.com/prod/";
 const VERSION = "1.0.0";
 const RECONNECT_INTERVAL = 10000;
-const MAX_RECONNECT_RETRIES = 5;
+const MAX_RECONNECT_RETRIES = 2;
 
 let timeout: NodeJS.Timeout;
 let instanceId: string;
@@ -32,7 +32,7 @@ export type PerfyllConfig = {
   customWSUrl?: string;
 };
 
-export type MarkExtraArgs = { user?: string; [key: string]: string | undefined };
+export type ExtraArgs = { user?: string; [key: string]: string | number | boolean | undefined };
 
 export type StartMarkArgs = EndMarkArgs & {
   headers?: Headers;
@@ -41,18 +41,40 @@ export type StartMarkArgs = EndMarkArgs & {
 };
 
 export type EndMarkArgs = {
-  extra?: MarkExtraArgs;
+  extra?: ExtraArgs;
 };
 
 export type MarkPostBody = {
   main: string;
   hash: string;
-  marks: [string, number, number, MarkExtraArgs][];
+  marks: [string, number, number, ExtraArgs][];
 };
+
+type ErrorLogType = {
+  action: "log";
+  type: "error";
+  date: number;
+  extra: ExtraArgs;
+  error: {
+    name: string;
+    message: string;
+    stack: string;
+  };
+};
+
+type LogType = {
+  action: "log";
+  type: "info";
+  date: number;
+  extra: ExtraArgs;
+  text: string;
+};
+
+export type LogPostBody = ErrorLogType | LogType;
 
 const mapMarks: Map<
   string,
-  [start: number, end: number, hash: string, main: string, extra: MarkExtraArgs]
+  [start: number, end: number, hash: string, main: string, extra: ExtraArgs]
 > = new Map();
 
 const HEADER_MARK = "perfyll_mark";
@@ -171,6 +193,42 @@ export function getHeaders(mark: string) {
 }
 
 /**
+ * It logs a text with optional extra args
+ * @param text Info text
+ * @param extra Extra args
+ * @returns
+ */
+export function log(text: string, extra: ExtraArgs = {}) {
+  return publishLog({
+    action: "log",
+    type: "info",
+    date: Date.now(),
+    text,
+    extra,
+  });
+}
+
+/**
+ * It logs an error with optional extra args
+ * @param error error Object or string
+ * @param extra Extra args
+ * @returns
+ */
+export function logError(error: string | Error, extra: ExtraArgs) {
+  return publishLog({
+    date: Date.now(),
+    action: "log",
+    type: "error",
+    error: {
+      message: typeof error === "string" ? error : error.message,
+      name: typeof error === "string" ? "Error" : error.name,
+      stack: typeof error === "string" ? "" : error.stack || "",
+    },
+    extra,
+  });
+}
+
+/**
  * The initialization function, it must be declared outside the function scope.
  * @param conf
  */
@@ -208,7 +266,7 @@ function connectWS() {
         Authorization: config.secret!,
         "x-api-key": config.publicKey,
         "instance-id": instanceId,
-        "service-name": config.serviceName,
+        "instance-name": config.serviceName,
         country: instanceCountry,
       },
     });
@@ -241,7 +299,7 @@ function send(mark: string) {
       const main = markRef[3];
       const currentExtra = markRef[4];
 
-      let marks: [string, number, number, MarkExtraArgs][] = [[mark, start, end, currentExtra]];
+      let marks: [string, number, number, ExtraArgs][] = [[mark, start, end, currentExtra]];
 
       if (subMarks) {
         for (let i = 0; i < subMarks.length; i++) {
@@ -275,7 +333,7 @@ function generateUUID() {
   return `${performance.timeOrigin}_${process.pid || ""}_${performance.now() || ""}`;
 }
 
-async function fetchAPI(event: MarkPostBody) {
+async function postMark(event: MarkPostBody) {
   return fetch(`${config.customHttpUrl || API_REST_URL}/analytics`, {
     method: "POST",
     body: JSON.stringify(event),
@@ -283,6 +341,22 @@ async function fetchAPI(event: MarkPostBody) {
       "Content-Type": "application/json",
       "perfyll-version": VERSION,
       "instance-id": instanceId,
+      "instance-name": config.serviceName!,
+      Authorization: config.secret!,
+      "x-api-key": config.publicKey!,
+    },
+  }).catch(() => {});
+}
+
+async function postLog(data: LogPostBody) {
+  return fetch(`${config.customHttpUrl || API_REST_URL}/log`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json",
+      "perfyll-version": VERSION,
+      "instance-id": instanceId,
+      "instance-name": config.serviceName!,
       Authorization: config.secret!,
       "x-api-key": config.publicKey!,
     },
@@ -308,7 +382,7 @@ function serializeData(data: MarkPostBody) {
   return JSON.stringify(data);
 }
 
-function log(data: MarkPostBody) {
+function print(data: MarkPostBody) {
   let full = data.marks[0][2] - data.marks[0][1];
   let result = "";
   for (let i = 0; i < data.marks.length; i++) {
@@ -333,12 +407,12 @@ function log(data: MarkPostBody) {
 
 function publishEvent(data: MarkPostBody) {
   if (config.logTimeline) {
-    log(data);
+    print(data);
   }
 
   if (config.forceHttp || !config.secret) {
     if (config.publicKey) {
-      return fetchAPI(data);
+      return postMark(data);
     } else {
       console.error("PublicKey not provided");
     }
@@ -349,7 +423,27 @@ function publishEvent(data: MarkPostBody) {
       if (ws && ws.readyState === ws.OPEN) {
         setImmediate(() => ws.send(serializeData(data)));
       } else {
-        setImmediate(() => fetchAPI(data));
+        setImmediate(() => postMark(data));
+      }
+    }
+  }
+}
+
+function publishLog(data: LogPostBody) {
+  if (config.forceHttp || !config.secret) {
+    if (config.publicKey) {
+      return postLog(data);
+    } else {
+      console.error("PublicKey not provided");
+    }
+  } else if (config.secret) {
+    if (typeof window !== "undefined") {
+      console.error("Do not expose your secret on the client side");
+    } else {
+      if (ws && ws.readyState === ws.OPEN) {
+        setImmediate(() => ws.send(JSON.stringify(data)));
+      } else {
+        setImmediate(() => postLog(data));
       }
     }
   }

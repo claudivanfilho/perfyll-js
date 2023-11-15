@@ -37,6 +37,30 @@ init({
 });
 ```
 
+### log()
+
+```javascript
+import { init, log } from "perfyll";
+
+init({ publicKey: "<publicKey>" });
+
+function myFunction() {
+  log("My Log Example", { myExtraArg: 1 });
+}
+```
+
+### logError()
+
+```javascript
+import { init, log } from "perfyll";
+
+init({ publicKey: "<publicKey>" });
+
+function myFunction() {
+  logError(new Error("My Error"), { myExtraArg: 1 });
+}
+```
+
 ### mark()
 
 ```javascript
