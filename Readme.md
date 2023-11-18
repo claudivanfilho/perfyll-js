@@ -25,7 +25,7 @@ yarn add perfyll
 
 ### init()
 
-Must be included in the the root of the project, you can access your apikeys [here](https://perfyll.com/api-keys)
+Must be included in the the root of the project, you can access your apikeys [here](https://perfyll.com/app/api-keys)
 
 ```javascript
 import { init } from "perfyll";
@@ -52,7 +52,7 @@ function myFunction() {
 ### logError()
 
 ```javascript
-import { init, log } from "perfyll";
+import { init, logError } from "perfyll";
 
 init({ publicKey: "<publicKey>" });
 

@@ -1,8 +1,8 @@
 import ansis from "ansis";
 import { WebSocket } from "ws";
 
-const API_REST_URL = "https://ye7mu1sifd.execute-api.us-east-1.amazonaws.com/prod";
-const API_WS_URL = "wss://l98b2n29xi.execute-api.us-east-1.amazonaws.com/prod/";
+const API_REST_URL = "https://restapi.perfyllapp.com";
+const API_WS_URL = "wss://wsapi.perfyllapp.com";
 const VERSION = "1.0.0";
 const RECONNECT_INTERVAL = 10000;
 const MAX_RECONNECT_RETRIES = 2;
