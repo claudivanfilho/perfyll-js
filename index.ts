@@ -198,13 +198,13 @@ export function getHeaders(mark: string) {
  * @param extra Extra args
  * @returns
  */
-export function log(text: string, extra: ExtraArgs = {}) {
+export function log(text: string, extra?: ExtraArgs) {
   return publishLog({
     action: "log",
     type: "info",
     date: Date.now(),
     text,
-    extra,
+    extra: extra || {},
   });
 }
 
@@ -214,7 +214,7 @@ export function log(text: string, extra: ExtraArgs = {}) {
  * @param extra Extra args
  * @returns
  */
-export function logError(error: string | Error, extra: ExtraArgs) {
+export function logError(error: string | Error, extra?: ExtraArgs) {
   return publishLog({
     date: Date.now(),
     action: "log",
@@ -224,7 +224,7 @@ export function logError(error: string | Error, extra: ExtraArgs) {
       name: typeof error === "string" ? "Error" : error.name,
       stack: typeof error === "string" ? "" : error.stack || "",
     },
-    extra,
+    extra: extra || {},
   });
 }
 
