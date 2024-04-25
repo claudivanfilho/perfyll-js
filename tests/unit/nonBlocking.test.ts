@@ -1,5 +1,5 @@
-import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../index";
-import { wait } from "../perf/utils";
+import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../../index";
+import { wait } from "../../perf/utils";
 
 init({
   publicKey: "123",

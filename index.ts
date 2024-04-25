@@ -80,6 +80,19 @@ const mapMarks: Map<
 const HEADER_MARK = "perfyll_mark";
 const HEADER_HASH = "perfyll_hash";
 
+let errorMessageDisplayed = false;
+
+function validateConfig() {
+  if (!config.publicKey && !config.secret) {
+    if (!errorMessageDisplayed) {
+      console.error("Perfyll Error: you should call the init function in the root");
+      errorMessageDisplayed = true;
+    }
+    return;
+  }
+  return true;
+}
+
 /**
  * @param {string} mark e.g. productClick, productDBQuery, registerUser, ...
  * @param {StartMarkArgs} args
@@ -214,15 +227,17 @@ export function log(text: string, extra?: ExtraArgs) {
  * @param extra Extra args
  * @returns
  */
-export function logError(error: string | Error, extra?: ExtraArgs) {
+export function logError(error: string | Error | unknown, extra?: ExtraArgs) {
+  if (!validateConfig()) return;
+  const errorCasted: string | Error = error as any;
   return publishLog({
     date: Date.now(),
     action: "log",
     type: "error",
     error: {
-      message: typeof error === "string" ? error : error.message,
-      name: typeof error === "string" ? "Error" : error.name,
-      stack: typeof error === "string" ? "" : error.stack || "",
+      message: typeof errorCasted === "string" ? errorCasted : errorCasted?.message,
+      name: typeof errorCasted === "string" ? "Error" : errorCasted?.name,
+      stack: typeof errorCasted === "string" ? "" : errorCasted?.stack || "",
     },
     extra: extra || {},
   });
@@ -234,6 +249,11 @@ export function logError(error: string | Error, extra?: ExtraArgs) {
  */
 export function init(conf: PerfyllConfig) {
   config = Object.assign(config, conf);
+  if (!validateConfig()) {
+    console.error("Perfyll Error: provide an api key");
+    errorMessageDisplayed = true;
+    return;
+  }
   if (typeof window !== "object" && !config.forceHttp) {
     if (instanceId) {
       if (!ws || ws.readyState !== ws.OPEN) {
@@ -408,6 +428,8 @@ function print(data: MarkPostBody) {
 }
 
 function publishEvent(data: MarkPostBody) {
+  if (!validateConfig()) return;
+
   if (config.logTimeline) {
     print(data);
   }
@@ -432,9 +454,11 @@ function publishEvent(data: MarkPostBody) {
 }
 
 function publishLog(data: LogPostBody) {
+  if (!validateConfig()) return;
+
   if (config.forceHttp || !config.secret) {
     if (config.publicKey) {
-      return postLog(data);
+      postLog(data);
     } else {
       console.error("PublicKey not provided");
     }
