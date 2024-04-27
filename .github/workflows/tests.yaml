@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
+          cache: "yarn"
+      - run: yarn install --frozen-lockfile
       - run: cd tests/e2e/next14/application && npm ci
       - run: npm run cy:next14
