@@ -31,3 +31,33 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: cd tests/e2e/next14/application && npm ci
       - run: npm run cy:next14
+  run-next13-tests:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_PERFYLL_PUBLIC_KEY: ${{ secrets.PERFYLL_PUBLIC_KEY }}
+      NEXT_PUBLIC_PERFYLL_CUSTOM_API_URL: ${{ secrets.PERFYLL_PUBLIC_URL }}
+      PERFYLL_SECRET: ${{ secrets.PERFYLL_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+      - run: yarn install --frozen-lockfile
+      - run: cd tests/e2e/next13/application && npm ci
+      - run: npm run cy:next13
+  run-vue3-tests:
+    runs-on: ubuntu-latest
+    env:
+      VITE_APP_PERFYLL_PUBLIC_KEY: ${{ secrets.PERFYLL_PUBLIC_KEY }}
+      VITE_APP_PERFYLL_CUSTOM_API_URL: ${{ secrets.PERFYLL_PUBLIC_URL }}
+      PERFYLL_SECRET: ${{ secrets.PERFYLL_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+      - run: yarn install --frozen-lockfile
+      - run: cd tests/e2e/vue/application && npm ci
+      - run: npm run cy:vue3
