@@ -25,4 +25,4 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
       - run: cd tests/e2e/next14/application && npm ci
-      - run: cd ../../.. && npm run cy:next14
+      - run: cd ../../../.. && npm run cy:next14
