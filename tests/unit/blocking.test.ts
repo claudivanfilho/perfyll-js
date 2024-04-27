@@ -4,11 +4,7 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-init({
-  publicKey: "123",
-  forceHttp: true,
-  logTimeline: true,
-});
+init({ publicKey: "123", forceHttp: true });
 
 describe("Tests for bloking transactions", () => {
   beforeEach(() => {

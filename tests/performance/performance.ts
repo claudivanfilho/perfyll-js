@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { getStatistics, print } from "./analytics";
-import { PerfyllConfig, endMark, init, startMark } from "..";
+import { PerfyllConfig, endMark, init, startMark } from "../../index";
 import { wait } from "./utils";
 import { Worker, isMainThread, parentPort } from "worker_threads";
 

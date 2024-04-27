@@ -5,10 +5,14 @@ on:
     branches:
       - main
 
-jobs:
-  run-jest-tests:
-    runs-on: ubuntu-latest
+strategy:
+  matrix:
+    # Define a strategy matrix with one job per matrix entry
+    tests: [run-unit-tests, run-next14-tests]
 
+jobs:
+  run-unit-tests:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -17,3 +21,13 @@ jobs:
           cache: "yarn"
       - run: yarn install --frozen-lockfile
       - run: yarn test
+  run-next14-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: cd tests/e2e/next14/application && npm ci
+      - run: cd ../../.. && npm run cy:next14

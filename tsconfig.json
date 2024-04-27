@@ -9,6 +9,6 @@
     "outDir": "dist",
     "declaration": true
   },
-  "include": ["*.ts", "perf", "tests"],
-  "exclude": ["tests", "perf"]
+  "include": ["tests", "server", "index.ts", "methods.ts", "types.ts"],
+  "exclude": ["tests"]
 }

@@ -1,10 +1,9 @@
 import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../../index";
-import { wait } from "../../perf/utils";
+import { wait } from "../performance/utils";
 
 init({
   publicKey: "123",
   forceHttp: true,
-  logTimeline: true,
 });
 
 describe("Tests for non bloking transactions", () => {

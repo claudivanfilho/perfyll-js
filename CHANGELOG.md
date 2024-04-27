@@ -1,3 +1,9 @@
+# Version 2.0.0
+
+- decrease package size for client bundle
+- fix ws modules dependencies when running in the server environment
+- different environments separation
+
 # Version 1.1.8
 
 - improve treatment when no api key is detected

@@ -1,7 +1,7 @@
 ![jest workflow](https://github.com/claudivanfilho/perfyll-js/actions/workflows/tests.yaml/badge.svg)
 [![npm version](https://img.shields.io/npm/v/perfyll.svg?color=green)](https://www.npmjs.com/package/perfyll)
 
-# Perfyll (VERSION 1 IS NOW AVAILABLE 🎉)
+# Perfyll (VERSION 2 IS NOW AVAILABLE 🎉)
 
 ## Get started by signing up at [perfyll.com](https://perfyll.com) and create your account
 
@@ -23,21 +23,17 @@ yarn add perfyll
 
 ## Usage
 
-### init()
+### init
 
 Must be included in the the root of the project, you can access your apikeys [here](https://perfyll.com/app/api-keys)
 
 ```javascript
 import { init } from "perfyll";
 
-init({
-  publicKey: "<publicKey>",
-  // secret must be provided only in the server environment
-  secret: "<secret>",
-});
+init({ publicKey: "<publicKey>" });
 ```
 
-### log()
+### log
 
 ```javascript
 import { init, log } from "perfyll";
@@ -49,7 +45,7 @@ function myFunction() {
 }
 ```
 
-### logError()
+### logError
 
 ```javascript
 import { init, logError } from "perfyll";
@@ -77,7 +73,7 @@ export default function MyComponent() {
 }
 ```
 
-### startMark(), endMark()
+### startMark & endMark
 
 Simple example
 
@@ -100,7 +96,7 @@ Example with subMark
 ```javascript
 import { startMark, endMark, init } from "perfyll";
 
-init({ publicKey: "<publicKey>", secret: "<secret>" });
+init({ publicKey: "<publicKey>" });
 
 async function myApiRoute() {
   const databaseQuery = async () => {
@@ -121,12 +117,12 @@ async function myApiRoute() {
 }
 ```
 
-### startMarkAsync(), endMarkAsync()
+### startMarkAsync & endMarkAsync
 
 ```javascript
 import { init, startMarkAsync, endMarkAsync } from "perfyll";
 
-init(...)
+init({ publicKey: "<publicKey>" });
 
 const sendEmail = async () => {
   // ...
@@ -147,9 +143,9 @@ Tracking performance in an end to end transaction (client and server).
 
 ```javascript
 // In Your Client Component
-import { init, getHeaders, startMark, endMark } from "@/lib/perfyll";
+import { init, getHeaders, startMark, endMark } from "perfyll";
 
-init({publicKey: "..."})
+init({ publicKey: "<publicKey>" });
 
 export function MyCompoennt() {
   ...
@@ -168,9 +164,9 @@ export function MyCompoennt() {
 
 ```javascript
 // In Your Server
-import { init, startMark, endMark } from "@/lib/perfyll";
+import { init, startMark, endMark } from "perfyll";
 
-init({publicKey: "...", secret: '...'})
+init({publicKey: "..."})
 
 export function reqisterUserApiRoute(req: Request) {
   startMark("reqisterUserRoute", {headers: req.headers});
@@ -185,7 +181,7 @@ You can pass extra properties to your marks:
 
 ```javascript
 // In Your Client Component
-import { init, startMark, endMark } from "@/lib/perfyll";
+import { init, startMark, endMark } from "perfyll";
 
 init({publicKey: "..."})
 
@@ -201,19 +197,10 @@ export function MyCompoennt() {
 
 ## Config
 
-#### logTimeline
+#### forceHttp (boolean, default = false)
 
-When initializing perfyll with the attribute `logTimeline` **true**, a graphical timeline is displayed in the terminal. (Use this in the DEV environment only!)
+You should set to true when in a serverless backend environment, because by default perfyll tries to use websocket in the backend environment.
 
-```javascript
-init({
-  publicKey: "<publicKey>",
-  logTimeline: true,
-});
-```
+#### serviceName (string, default = "")
 
-Examples of output
-
-![console result](https://github.com/claudivanfilho/perfyll-js/raw/main/images/console.png)
-
-![console2 result](https://github.com/claudivanfilho/perfyll-js/raw/main/images/console2.png)
+You can name your service in your backend environment.
