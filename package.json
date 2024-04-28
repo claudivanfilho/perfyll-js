@@ -33,15 +33,11 @@
     "prepublishOnly": "npm test",
     "version": "git add -A index",
     "postversion": "git push && git push --tags",
-    "cy:open": "cypress open",
-    "kill-port-3000": "kill-port 3000",
-    "kill-port-5173": "kill-port 5173",
-    "run:next14": "cd tests/e2e/next14/application && npm run dev & wait-on http://localhost:3000",
-    "cy:next14": "npm run kill-port-3000 && npm run run:next14 && cypress run --spec \"tests/e2e/next14/specs/smoke.cy.js\" && npm run kill-port-3000",
-    "run:next13": "cd tests/e2e/next13/application && npm run dev & wait-on http://localhost:3000",
-    "cy:next13": "npm run kill-port-3000 && npm run run:next13 && cypress run --spec \"tests/e2e/next13/specs/smoke.cy.js\" && npm run kill-port-3000",
-    "run:vue3": "cd tests/e2e/vue/application && npm run dev & wait-on http://localhost:5173",
-    "cy:vue3": "npm run kill-port-5173 && npm run run:vue3 && cypress run --spec \"tests/e2e/vue/specs/smoke.cy.js\" && npm run kill-port-5173"
+    "run:app": "cd tests/e2e/$appDir/application && npm run dev & wait-on http://localhost:$port",
+    "cy:run": "kill-port $port && npm run run:app && cypress run --spec \"tests/e2e/$appDir/specs/smoke.cy.ts\" && kill-port $port",
+    "cy:next14": "appDir=next14 port=3000 npm run cy:run",
+    "cy:next13": "appDir=next13 port=3000 npm run cy:run",
+    "cy:vue3": "appDir=vue port=5173 npm run cy:run"
   },
   "prepublish": "tsc",
   "devDependencies": {
