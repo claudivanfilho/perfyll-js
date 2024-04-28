@@ -1,8 +1,8 @@
 describe("Next14 E2E tests", () => {
   it("test if the mark event is sent to the cloud", () => {
+    cy.intercept("POST", /\/analytics$/).as("postMark");
     cy.visit("http://localhost:3000");
     cy.get("[data-testid=status-msg]").should("contain", "App Loaded Successfully");
-    cy.intercept("POST", /\/analytics$/).as("postMark");
     cy.wait("@postMark").then((interception) => {
       const req = interception.request;
       expect(req.body.hash).to.exist;
@@ -15,16 +15,11 @@ describe("Next14 E2E tests", () => {
     });
   });
 
-  it("test if the api event with perfyll goes well", () => {
-    cy.visit("http://localhost:3000");
-    cy.get("[data-testid=test-api-button]").click();
-  });
-
   it("test if the logError event is sent to the cloud", () => {
     cy.visit("http://localhost:3000");
+    cy.intercept("POST", /\/log$/).as("postLogError");
     cy.get("[data-testid=test-error]").click();
     cy.get("[data-testid=status-msg]").should("contain", "LogError working fine");
-    cy.intercept("POST", /\/log$/).as("postLogError");
     cy.wait("@postLogError").then((interception) => {
       const req = interception.request;
       expect(req.body.action).to.equal("log");
@@ -36,6 +31,11 @@ describe("Next14 E2E tests", () => {
       expect(req.body.extra.mode).to.equal("frontend");
       expect(req.headers["x-api-key"]).to.exist;
     });
+  });
+
+  it("test if the api event with perfyll goes well", () => {
+    cy.visit("http://localhost:3000");
+    cy.get("[data-testid=test-api-button]").click();
   });
 
   it("test when an error occurs in the back and the logError is sent", () => {

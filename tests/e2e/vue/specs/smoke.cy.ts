@@ -1,8 +1,8 @@
 describe("Vuejs E2E tests", () => {
   it("test if the mark event is sent to the cloud", () => {
+    cy.intercept("POST", /\/analytics$/).as("postMark");
     cy.visit("http://localhost:5173");
     cy.get("[data-testid=status-msg]").should("contain", "App Loaded Successfully");
-    cy.intercept("POST", /\/analytics$/).as("postMark");
     cy.wait("@postMark").then((interception) => {
       const req = interception.request;
       expect(req.body.hash).to.exist;
@@ -16,10 +16,10 @@ describe("Vuejs E2E tests", () => {
   });
 
   it("test if the logError event is sent to the cloud", () => {
+    cy.intercept("POST", /\/log$/).as("postLogError");
     cy.visit("http://localhost:5173");
     cy.get("[data-testid=test-error]").click();
     cy.get("[data-testid=status-msg]").should("contain", "LogError working fine");
-    cy.intercept("POST", /\/log$/).as("postLogError");
     cy.wait("@postLogError").then((interception) => {
       const req = interception.request;
       expect(req.body.action).to.equal("log");
