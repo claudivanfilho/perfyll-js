@@ -1,8 +1,16 @@
 import { WebSocket } from "ws";
-import { fetcher, config, init as frontInit, instanceId, ws, setState } from "../methods";
+import {
+  fetcher,
+  config,
+  init as frontInit,
+  instanceId,
+  ws,
+  setState,
+  getConfigValue,
+} from "../methods";
 import { PerfyllConfigServer as Config } from "../types";
+import * as base from "../index";
 
-const API_WS_URL = "wss://wsapi.perfyllapp.com";
 const VERSION = "1.0.0";
 const RECONNECT_INTERVAL = 10000;
 const MAX_RECONNECT_RETRIES = 2;
@@ -19,9 +27,9 @@ async function createInstance() {
  * The initialization function, it must be declared outside the function scope.
  * @param conf
  */
-export function initServer(conf: Config) {
+export function initServer(conf: Config = {}) {
   frontInit(conf);
-  const shouldConnect = !config.forceHttp && (!ws || ws.readyState !== ws.OPEN);
+  const shouldConnect = !getConfigValue("FORCE_HTTP") && (!ws || ws.readyState !== ws.OPEN);
   if (!instanceId) {
     createInstance().then((res) => {
       if (res) {
@@ -40,27 +48,32 @@ function connectWS() {
   reconnectRetries += 1;
   if (reconnectRetries > MAX_RECONNECT_RETRIES) return;
   try {
-    const myWS = new WebSocket(config.customWSUrl || API_WS_URL, {
+    const myWS = new WebSocket(getConfigValue("WS_URL") || "", {
       headers: {
         "perfyll-version": VERSION,
-        Authorization: config.secret!,
-        "x-api-key": config.publicKey,
+        Authorization: getConfigValue("API_SECRET"),
+        "x-api-key": getConfigValue("API_KEY"),
         "instance-id": instanceId,
-        "instance-name": config.serviceName,
-        country: instanceCountry,
+        "instance-name": getConfigValue("SERVICE") || "",
+        country: instanceCountry || "",
       },
     });
     setState({ ws: myWS });
-    myWS.on("open", () => console.log("Perfyll stream connected"));
+    myWS.on("open", () => console.info("Perfyll stream connected"));
     myWS.on("error", () => {
-      console.log("Perfyll stream error");
+      console.error("Perfyll stream error");
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
     myWS.on("close", () => {
-      console.log("Perfyll stream closed");
+      console.error("Perfyll stream closed");
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
   } catch {}
 }
 
+export const isStreamming = () => ws?.readyState === ws?.OPEN;
+
 export type PerfyllConfigServer = Config;
+
+export const { mark, startMark, endMark, startMarkAsync, endMarkAsync, getHeaders, log, logError } =
+  base;

@@ -13,7 +13,4 @@ export const {
   logError,
 } = methods;
 
-// export const { initServer } = serverMethods;
-
 export type PerfyllConfig = Config;
-// export type PerfyllConfigServer = ConfigServer;

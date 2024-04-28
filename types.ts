@@ -5,7 +5,7 @@ export type PerfyllConfigServer = PerfyllConfig & {
 };
 
 export type PerfyllConfig = {
-  publicKey: string;
+  publicKey?: string;
   forceHttp?: boolean;
   customHttpUrl?: string;
 };

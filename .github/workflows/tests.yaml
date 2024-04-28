@@ -51,7 +51,6 @@ jobs:
     env:
       VITE_APP_PERFYLL_PUBLIC_KEY: ${{ secrets.PERFYLL_PUBLIC_KEY }}
       VITE_APP_PERFYLL_CUSTOM_API_URL: ${{ secrets.PERFYLL_PUBLIC_URL }}
-      PERFYLL_SECRET: ${{ secrets.PERFYLL_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -61,3 +60,19 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: cd tests/e2e/vue/application && npm ci
       - run: npm run cy:vue3
+  run-express-tests:
+    runs-on: ubuntu-latest
+    env:
+      PERFYLL_PUBLIC_KEY: ${{ secrets.PERFYLL_PUBLIC_KEY }}
+      PERFYLL_CUSTOM_API_URL: ${{ secrets.PERFYLL_PUBLIC_URL }}
+      PERFYLL_SECRET: ${{ secrets.PERFYLL_SECRET_KEY }}
+      PERFYLL_CUSTOM_WS_URL: ${{ secrets.PERFYLL_WS_URL }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+      - run: yarn install --frozen-lockfile
+      - run: cd tests/e2e/express/application && npm ci
+      - run: npm run cy:express

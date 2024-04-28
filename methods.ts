@@ -10,6 +10,7 @@ import {
 } from "./types";
 
 const API_REST_URL = "https://restapi.perfyllapp.com";
+const API_WS_URL = "wss://wsapi.perfyllapp.com";
 const MAX_ERROR_STACK_LENGTH = 5;
 const VERSION = "1.0.0";
 const HEADER_MARK = "perfyll_mark";
@@ -189,9 +190,11 @@ export function init(conf: PerfyllConfig) {
 }
 
 function validateConfig() {
-  if (!config.publicKey) {
+  if (!getConfigValue("API_KEY")) {
     if (!errorMessageDisplayed) {
-      console.error("Perfyll Error: you should call the ini|initServer function with a public key");
+      console.error(
+        "Perfyll Error: you should call the ini|initServer function with a public key or define a .env var"
+      );
       errorMessageDisplayed = true;
     }
     return;
@@ -246,20 +249,46 @@ function send(mark: string) {
   };
 }
 
+export function getConfigValue(
+  val: "API_URL" | "WS_URL" | "FORCE_HTTP" | "API_KEY" | "API_SECRET" | "SERVICE"
+) {
+  const isNotNode = typeof process === "undefined";
+  const env = isNotNode ? {} : process.env;
+  if (val === "API_URL")
+    return (
+      config.customHttpUrl ||
+      env.VITE_APP_PERFYLL_CUSTOM_API_URL ||
+      env.NEXT_PUBLIC_PERFYLL_CUSTOM_API_URL ||
+      env.PERFYLL_CUSTOM_API_URL ||
+      API_REST_URL
+    );
+  if (val === "WS_URL") return config.customWSUrl || env.PERFYLL_CUSTOM_WS_URL || API_WS_URL;
+  if (val === "FORCE_HTTP") return (config.forceHttp && "true") || env.PERFYLL_FORCE_HTTP;
+  if (val === "API_KEY")
+    return (
+      config.publicKey ||
+      env.VITE_APP_PERFYLL_PUBLIC_KEY ||
+      env.NEXT_PUBLIC_PERFYLL_PUBLIC_KEY ||
+      env.PERFYLL_PUBLIC_KEY
+    );
+  if (val === "API_SECRET") return config.secret || env.PERFYLL_SECRET;
+  if (val === "SERVICE") return config.serviceName || env.PERFYLL_SERVICE_NAME;
+}
+
 export async function fetcher(
   path: string,
   data: MarkPostBody | LogPostBody | CreateInstancePostBody
 ) {
-  return fetch(`${config.customHttpUrl || API_REST_URL}${path}`, {
+  return fetch(`${getConfigValue("API_URL")}${path}`, {
     method: "POST",
     body: JSON.stringify(data),
     headers: {
       "Content-Type": "application/json",
       "perfyll-version": VERSION,
       "instance-id": instanceId || "",
-      "instance-name": config.serviceName || "",
-      Authorization: config.secret || "",
-      "x-api-key": config.publicKey!,
+      "instance-name": getConfigValue("SERVICE") || "",
+      Authorization: getConfigValue("API_SECRET") || "",
+      "x-api-key": getConfigValue("API_KEY") || "",
     },
   }).catch(() => {});
 }
@@ -267,9 +296,9 @@ export async function fetcher(
 function publish(path: string, data: MarkPostBody | LogPostBody) {
   if (!validateConfig()) return;
 
-  if (config.forceHttp || !config.secret) {
-    if (config.publicKey) return fetcher(path, data);
-  } else if (config.secret) {
+  if (getConfigValue("FORCE_HTTP") || !getConfigValue("API_SECRET")) {
+    if (getConfigValue("API_KEY")) return fetcher(path, data);
+  } else if (getConfigValue("API_SECRET")) {
     if (typeof window !== "undefined") {
       console.error("Perfyll error: Do not expose your secret on the client side");
     } else {
