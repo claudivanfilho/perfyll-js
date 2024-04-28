@@ -19,7 +19,7 @@ export default function MyClientTestComponent() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    mark("testNext14Front").send();
+    mark("testNext13Front").send();
     setMsg("App Loaded Successfully");
   }, []);
 

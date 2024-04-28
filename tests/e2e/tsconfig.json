@@ -10,6 +10,5 @@
     "declaration": true,
     "types": ["cypress"]
   },
-  "include": ["tests/unit", "server", "index.ts", "methods.ts", "types.ts"],
-  "exclude": ["tests", "./cypress.config.ts", "node_modules"]
+  "include": ["./**/*.cy.ts", "./**/*.cy.js"]
 }
