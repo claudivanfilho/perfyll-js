@@ -66,7 +66,10 @@ describe("Performance tests por the perfyll library on server", () => {
         consoleTable(print(dataWith.result, dataWithout.result));
       }
 
-      if (dataWith && dataWithout) done();
+      if (dataWith && dataWithout) {
+        workerProcess.kill();
+        done();
+      }
     });
   }, 120000);
 });
