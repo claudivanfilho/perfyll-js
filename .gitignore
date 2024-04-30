@@ -136,3 +136,5 @@ tsconfig.tsbuildinfo
 .env
 
 cypress
+
+**/perf/utils/*.js

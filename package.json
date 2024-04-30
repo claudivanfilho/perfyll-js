@@ -38,10 +38,14 @@
     "cy:next14": "appDir=next14 port=3000 npm run cy:run",
     "cy:next13": "appDir=next13 port=3000 npm run cy:run",
     "cy:vue3": "appDir=vue port=5173 npm run cy:run",
-    "cy:express": "appDir=express port=3000 npm run cy:run"
+    "cy:express": "appDir=express port=3000 npm run cy:run",
+    "build-perf": "tsc && tsc tests/perf/utils/memoryAndCpu.ts",
+    "run:perf": "kill-port 3000 && kill-port 3100 && kill-port 6000 && concurrently \"cd tests/perf/fakeCloud && npm run dev\" \"cd tests/perf/express-server && npm run dev\"",
+    "test:perf": "npm run build-perf && npm run run:perf & wait-on http://localhost:4000 && jest --testPathPattern='./tests/perf/performance.test.ts'"
   },
   "prepublish": "tsc",
   "devDependencies": {
+    "@types/autocannon": "^7.12.5",
     "@types/cors": "^2.8.14",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.5",
@@ -49,8 +53,10 @@
     "@types/supertest": "^6.0.2",
     "@types/ws": "^8.5.5",
     "amqplib": "^0.10.3",
+    "autocannon": "^7.15.0",
     "body-parser": "^1.20.2",
     "bun-types": "^1.0.2",
+    "concurrently": "^8.2.2",
     "cors": "^2.8.5",
     "cypress": "^13.8.1",
     "dotenv": "^16.3.1",
@@ -68,11 +74,11 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "testMatch": [
-      "**/tests/unit/?(*.)+(spec|test).ts?(x)"
+      "**/tests/unit/?(*.)+(spec|test).ts?(x)",
+      "**/tests/perf/?(*.)+(spec|test).ts?(x)"
     ]
   },
   "dependencies": {
-    "ansis": "^1.5.6",
     "bufferutil": "^4.0.8",
     "utf-8-validate": "^6.0.3",
     "ws": "^8.14.2"

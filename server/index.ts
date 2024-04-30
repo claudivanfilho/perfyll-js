@@ -20,7 +20,9 @@ let instanceCountry: string;
 let reconnectRetries = 0;
 
 async function createInstance() {
-  return fetcher("/instance", { serviceName: config.serviceName! }).then((res) => res!.json());
+  return fetcher("/instance", { serviceName: config.serviceName! }).then((res) =>
+    (res as Response).json()
+  );
 }
 
 /**
@@ -60,12 +62,12 @@ function connectWS() {
     });
     setState({ ws: myWS });
     myWS.on("open", () => console.info("Perfyll stream connected"));
-    myWS.on("error", () => {
-      console.error("Perfyll stream error");
+    myWS.on("error", (err) => {
+      console.error("Perfyll stream error", err);
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
-    myWS.on("close", () => {
-      console.error("Perfyll stream closed");
+    myWS.on("close", (err) => {
+      console.error("Perfyll stream closed", err);
       timeout = setTimeout(connectWS, RECONNECT_INTERVAL);
     });
   } catch {}
