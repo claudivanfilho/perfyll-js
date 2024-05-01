@@ -137,4 +137,4 @@ tsconfig.tsbuildinfo
 
 cypress
 
-**/perf/utils/*.js
+**/performance/utils/*.js

@@ -1,5 +1,19 @@
-// @ts-ignore-next-line
-// import { consoleTable } from "js-awe";
+const labels = [
+  "memory.rss",
+  "memory.heapTotal",
+  "memory.heapUsed",
+  "memory.external",
+  "memory.rss.middle",
+  "memory.heapTotal.middle",
+  "memory.heapUsed.middle",
+  "memory.external.middle",
+  "cpu.user",
+  "cpu.system",
+  "memory.rss.final",
+  "memory.heapTotal.final",
+  "memory.heapUsed.final",
+  "memory.external.final",
+];
 
 function calculatePercentageDifference(value1: number, value2: number): number {
   if (value1 === value2) {
@@ -47,23 +61,6 @@ export async function getStatistics(cb: () => Promise<void>, iterations = 10) {
 }
 
 export function print(data: number[], data2?: number[]) {
-  const labels = [
-    "memory.rss",
-    "memory.heapTotal",
-    "memory.heapUsed",
-    "memory.external",
-    "memory.rss.middle",
-    "memory.heapTotal.middle",
-    "memory.heapUsed.middle",
-    "memory.external.middle",
-    "cpu.user",
-    "cpu.system",
-    "memory.rss.final",
-    "memory.heapTotal.final",
-    "memory.heapUsed.final",
-    "memory.external.final",
-  ];
-
   const results: any = [];
   labels.map((label, index) => {
     results.push({

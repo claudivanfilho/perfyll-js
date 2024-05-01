@@ -1,8 +1,8 @@
 import { Worker, isMainThread, parentPort } from "worker_threads";
 import { getStatistics } from "./statistics";
-import { initServer, startMark, endMark } from "../../../dist/server/index";
+import { initServer, startMark, endMark, close } from "../../../dist/server/index";
 
-function wait(ms: number) {
+export function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -27,7 +27,8 @@ if (isMainThread) {
         startMark("markTest");
         JSON.parse(JSON.stringify(process));
         endMark("markTest").send();
-      }, 10000);
+      }, 20000);
+      close();
       console.log(
         JSON.stringify({
           time: Date.now() - now,
@@ -46,7 +47,8 @@ if (isMainThread) {
       const now = Date.now();
       const result = await getStatistics(async () => {
         JSON.parse(JSON.stringify(process));
-      }, 10000);
+      }, 20000);
+      close();
       console.log(
         JSON.stringify({
           time: Date.now() - now,

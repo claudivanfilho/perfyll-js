@@ -39,9 +39,12 @@
     "cy:next13": "appDir=next13 port=3000 npm run cy:run",
     "cy:vue3": "appDir=vue port=5173 npm run cy:run",
     "cy:express": "appDir=express port=3000 npm run cy:run",
-    "build-perf": "tsc && tsc tests/perf/utils/memoryAndCpu.ts",
-    "run:perf": "kill-port 3000 3100 6000 4000 && concurrently \"cd tests/perf/fakeCloud && npm run dev\" \"cd tests/perf/express-server && npm run dev\"",
-    "test:perf": "npm run build-perf && npm run run:perf & wait-on http://localhost:3000 && jest --testPathPattern='./tests/perf/performance.test.ts' --detectOpenHandles"
+    "build-perf": "tsc && tsc tests/performance/utils/memoryAndCpu.ts",
+    "kill-ports": "kill-port --port 3000,3100,6000,4000",
+    "run:perf:load": "concurrently \"cd tests/performance/fakeCloud && npm run dev\" \"cd tests/performance/express-server && npm run dev\"",
+    "run:perf:memory": "cd tests/performance/fakeCloud && npm run dev",
+    "test:perf:load": "npm run kill-ports && npm run build-perf && npm run run:perf:load & wait-on http://localhost:3000 && jest --testPathPattern='./tests/performance/serverLoadTesting.test.ts' --detectOpenHandles",
+    "test:perf:memory": "npm run kill-ports && npm run build-perf && npm run run:perf:memory & wait-on http://localhost:4000 && jest --testPathPattern='./tests/performance/memoryAndCpu.test.ts' --detectOpenHandles"
   },
   "prepublish": "tsc",
   "devDependencies": {
@@ -75,7 +78,7 @@
     "testEnvironment": "node",
     "testMatch": [
       "**/tests/unit/?(*.)+(spec|test).ts?(x)",
-      "**/tests/perf/?(*.)+(spec|test).ts?(x)"
+      "**/tests/performance/?(*.)+(spec|test).ts?(x)"
     ]
   },
   "dependencies": {

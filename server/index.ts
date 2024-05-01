@@ -75,6 +75,9 @@ function connectWS() {
 
 export const isStreamming = () => ws?.readyState === ws?.OPEN;
 
+export const close = () =>
+  ws && (ws as WebSocket)?.readyState === (ws as WebSocket)?.OPEN && (ws as WebSocket)?.close();
+
 export type PerfyllConfigServer = Config;
 
 export const { mark, startMark, endMark, startMarkAsync, endMarkAsync, getHeaders, log, logError } =

@@ -76,7 +76,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: cd tests/e2e/express/application && npm ci
       - run: npm run cy:express
-  performance-tests:
+  performance-load-testing:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -85,6 +85,17 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "yarn"
       - run: yarn install --frozen-lockfile
-      - run: cd tests/perf/express-server && npm ci
-      - run: cd tests/perf/fakeCloud && npm ci
-      - run: npm run test:perf
+      - run: cd tests/performance/express-server && npm ci
+      - run: cd tests/performance/fakeCloud && npm ci
+      - run: npm run test:perf:load
+  performance-memory-and-cpu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: ".nvmrc"
+          cache: "yarn"
+      - run: yarn install --frozen-lockfile
+      - run: cd tests/performance/fakeCloud && npm ci
+      - run: npm run test:perf:memory
