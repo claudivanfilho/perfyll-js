@@ -36,6 +36,12 @@ if (isMainThread) {
         })
       );
     } else {
+      initServer({
+        publicKey: "123",
+        customHttpUrl: "http://localhost:4000",
+        secret: "1234",
+        customWSUrl: "ws://localhost:6000",
+      });
       await wait(5000);
       const now = Date.now();
       const result = await getStatistics(async () => {

@@ -43,32 +43,37 @@ describe("Performance tests por the perfyll library on server", () => {
   //   });
   // }, 10000);
 
-  test("interative", (done) => {
+  test("test memory and cpu at a high workload", (done) => {
     const workerProcess = spawn("node", ["tests/perf/utils/memoryAndCpu.js"]);
     let dataWith: any;
     let dataWithout: any;
-    // Listen for events from the spawned process
     workerProcess.stdout.on("data", (data: string) => {
       let obj: any;
       try {
         obj = JSON.parse(data.toString());
       } catch {}
       if (obj) {
-        if (obj.mode === "withPerfyll") {
-          dataWith = obj;
-        } else if (obj.mode === "withoutPerfyll") {
-          dataWithout = obj;
-        }
+        if (obj.mode === "withPerfyll") dataWith = obj;
+        else if (obj.mode === "withoutPerfyll") dataWithout = obj;
       }
       if (dataWith && dataWithout) {
-        console.log("withPerfyll", dataWith.time);
-        console.log("withoutPerfyll", dataWithout.time);
-        consoleTable(print(dataWith.result, dataWithout.result));
-      }
-
-      if (dataWith && dataWithout) {
+        const percentDiff = Math.abs(100 - (dataWithout.time / dataWith.time) * 100);
+        const statistics = print(dataWith.result, dataWithout.result);
+        const memoryRSSDiff = statistics.find(
+          (data: any) => data.label === "memory.rss.final"
+        ).result;
+        const cpuUser = statistics.find((data: any) => data.label === "cpu.user ").result;
+        console.log(`time: percent difference between with and without perfyll ${percentDiff}%`);
+        console.log(`memory: percent difference between with and without perfyll ${percentDiff}%`);
+        console.log(`cpu: percent difference between with and without perfyll ${cpuUser}%`);
+        consoleTable(statistics);
         workerProcess.kill();
+
         done();
+        // assert that the time with perfyll is not more than 10% high
+        expect(percentDiff).toBeLessThanOrEqual(10);
+        // assert that the rss memory is not more than 10% high
+        expect(memoryRSSDiff).toBeLessThanOrEqual(10);
       }
     });
   }, 120000);

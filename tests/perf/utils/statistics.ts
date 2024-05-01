@@ -1,16 +1,16 @@
 // @ts-ignore-next-line
 // import { consoleTable } from "js-awe";
 
-function calculatePercentageDifference(value1: number, value2: number): string {
+function calculatePercentageDifference(value1: number, value2: number): number {
   if (value1 === value2) {
-    return "Equal";
+    return 0;
   }
 
   const max = Math.max(value1, value2);
   const min = Math.min(value1, value2);
   const percentage = ((max - min) / min) * 100;
 
-  return `${value1 > value2 ? "+" : "-"} ${percentage.toFixed(2)}%`;
+  return +((value1 > value2 ? 1 : -1) * percentage).toFixed(2);
 }
 
 export async function getStatistics(cb: () => Promise<void>, iterations = 10) {
