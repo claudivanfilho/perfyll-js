@@ -1,6 +1,6 @@
 import { startMark, endMark, mark, init } from "../../index";
 
-function wait(ms: number) {
+export function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 

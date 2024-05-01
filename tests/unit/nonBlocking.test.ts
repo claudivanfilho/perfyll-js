@@ -1,5 +1,5 @@
 import { endMark, endMarkAsync, init, startMark, startMarkAsync } from "../../index";
-import { wait } from "../performance/utils/memoryAndCpu";
+import { wait } from "./blocking.test";
 
 init({
   publicKey: "123",

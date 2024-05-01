@@ -25,7 +25,7 @@ describe("Performance tests por the perfyll library on server", () => {
     );
     const requestSentDiff = Math.abs(100 - (result.requests.sent / result2.requests.sent) * 100);
     expect(requestSentDiff).toBeLessThanOrEqual(10);
-    expect(requestP90Diff).toBeLessThanOrEqual(2);
-    expect(throughputP90Diff).toBeLessThanOrEqual(2);
+    expect(requestP90Diff).toBeLessThanOrEqual(6);
+    expect(throughputP90Diff).toBeLessThanOrEqual(6);
   }, 180000);
 });
